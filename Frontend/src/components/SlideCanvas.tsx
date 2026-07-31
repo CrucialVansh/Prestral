@@ -8,7 +8,7 @@ interface Props {
   persona: Audience
   highlightAll: boolean
   pinnedId: string | null
-  onPin: (id: string | null) => void
+  onPin?: (id: string | null) => void
   onChatOpen?: (componentId: string) => void
   onCloseChat?: () => void
   chatComponentId?: string | null
@@ -26,7 +26,7 @@ export function SlideCanvas({
   aspectRatio,
   persona,
   highlightAll,
-  pinnedId,
+  pinnedId = null,
   onPin,
   onChatOpen,
   onCloseChat,
@@ -50,31 +50,36 @@ export function SlideCanvas({
           If the two ever disagree this shows as a slight stretch rather than as
           silently misaligned hotspots. */}
       <img
-        src={slide.imageUrl}
+        src={slide.imageUrl ?? ''}
         alt={`Slide ${slide.index + 1}`}
         className="h-full w-full object-fill"
         draggable={false}
       />
 
-      {slide.components.map((h) => (
-        <Hotspot
-          key={h.id}
-          hotspot={h}
-          style={{
-            left: `${h.bbox.left * 100}%`,
-            top: `${h.bbox.top * 100}%`,
-            width: `${h.bbox.width * 100}%`,
-            height: `${h.bbox.height * 100}%`,
-          }}
-          persona={persona}
-          highlighted={highlightAll}
-          pinned={pinnedId === h.id}
-          onPin={onPin}
-          onChatOpen={onChatOpen}
-          onClose={onCloseChat}
-          isChatOpen={chatComponentId === h.id}
-        />
-      ))}
+      {/* Only render hotspots if handlers are provided (not in presenter mode) */}
+      {onPin && onChatOpen && (
+        <>
+          {slide.components.map((h) => (
+            <Hotspot
+              key={h.id}
+              hotspot={h}
+              style={{
+                left: `${h.bbox.left * 100}%`,
+                top: `${h.bbox.top * 100}%`,
+                width: `${h.bbox.width * 100}%`,
+                height: `${h.bbox.height * 100}%`,
+              }}
+              persona={persona}
+              highlighted={highlightAll}
+              pinned={pinnedId === h.id}
+              onPin={onPin}
+              onChatOpen={onChatOpen}
+              onClose={onCloseChat}
+              isChatOpen={chatComponentId === h.id}
+            />
+          ))}
+        </>
+      )}
     </div>
   )
 }

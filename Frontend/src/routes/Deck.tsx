@@ -10,16 +10,21 @@ import { usePersona } from '../hooks/usePersona'
 import { useSession } from '../hooks/useSession'
 import type { Audience } from '../types'
 
-export default function Deck() {
+interface DeckProps {
+  mode?: 'presenter' | 'viewer'
+}
+
+export default function Deck({ mode = 'viewer' }: DeckProps) {
   const { deckId, slideIndex } = useParams<{ deckId: string; slideIndex: string }>()
   const navigate = useNavigate()
+  const isPresenter = mode === 'presenter'
 
   const { deck, loading, error } = useDeck(deckId)
   const { persona: globalAudience, setPersona: setGlobalPersona } = usePersona()
   const [highlightAll, setHighlightAll] = useState(false)
   const [pinnedId, setPinnedId] = useState<string | null>(null)
   
-  // Chat state
+  // Chat state - not used in presenter mode
   const [chatComponentId, setChatComponentId] = useState<string | null>(null)
   const [sessionAudience, setSessionAudience] = useState<Audience>(globalAudience)
   
@@ -49,12 +54,14 @@ export default function Deck() {
       ? Math.min(Math.max(requested, 0), total - 1)
       : 0
 
+  const basePath = isPresenter ? `/present/${deckId}` : `/deck/${deckId}`
+
   // A hand-typed or stale index shouldn't 404 mid-demo — clamp it into the URL.
   useEffect(() => {
     if (deck && String(current) !== slideIndex) {
-      navigate(`/deck/${deckId}/${current}`, { replace: true })
+      navigate(`${basePath}/${current}`, { replace: true })
     }
-  }, [deck, current, slideIndex, deckId, navigate])
+  }, [deck, current, slideIndex, deckId, navigate, basePath])
 
   // A pin belongs to one hotspot on one slide.
   useEffect(() => setPinnedId(null), [current])
@@ -70,9 +77,9 @@ export default function Deck() {
       if (total === 0) return
       const next = Math.min(Math.max(i, 0), total - 1)
       indexRef.current = next
-      navigate(`/deck/${deckId}/${next}`)
+      navigate(`${basePath}/${next}`)
     },
-    [deckId, navigate, total],
+    [basePath, deckId, navigate, total],
   )
 
   const step = useCallback((delta: number) => goTo(indexRef.current + delta), [goTo])
@@ -82,11 +89,18 @@ export default function Deck() {
     if (!deck) return
     for (const i of [current - 1, current + 1]) {
       const s = deck.slides[i]
-      if (s) new Image().src = s.imageUrl
+      if (s && s.imageUrl) new Image().src = s.imageUrl
     }
   }, [deck, current])
 
-  useKeyboardNav({
+  // Disable keyboard shortcuts for presenters (h, Escape for pins/chats)
+  const keyboardHandlers = isPresenter ? {
+    onPrev: () => step(-1),
+    onNext: () => step(1),
+    onPersona: () => {},
+    onEscape: () => {},
+    onToggleHighlight: () => {},
+  } : {
     onPrev: () => step(-1),
     onNext: () => step(1),
     onPersona: () => {},
@@ -95,7 +109,10 @@ export default function Deck() {
       setChatComponentId(null)
     },
     onToggleHighlight: () => setHighlightAll((v) => !v),
-  })
+  }
+
+  // Cast to satisfy TypeScript
+  useKeyboardNav(keyboardHandlers as Parameters<typeof useKeyboardNav>[0])
 
   if (loading) {
     return (
@@ -121,34 +138,50 @@ export default function Deck() {
           so a header that wrapped to two lines would push the slide off-screen.
           The title truncates instead. */}
       <header className="flex flex-nowrap items-center gap-4 border-b border-white/[0.07] px-6 py-3">
-        <h1 className="mr-auto min-w-0 truncate text-sm font-medium text-white/80">{deck.slides_filename ?? 'Untitled'}</h1>
-
-        {chatComponentId ? (
-          <AudienceSelector
-            audience={sessionAudience}
-            onChange={handleSessionAudienceChange}
-            disabled={sessionLoading}
-          />
+        {/* Session code for presenter, deck name for viewer */}
+        {isPresenter ? (
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-mono font-medium text-sky-300 tracking-wider">
+              CODE: {deckId}
+            </span>
+            <span className="text-white/30">|</span>
+            <h1 className="min-w-0 truncate text-sm font-medium text-white/80">{deck.slides_filename ?? 'Untitled'}</h1>
+          </div>
         ) : (
-          <AudienceSelector
-            audience={globalAudience}
-            onChange={setGlobalPersona}
-          />
+          <h1 className="mr-auto min-w-0 truncate text-sm font-medium text-white/80">{deck.slides_filename ?? 'Untitled'}</h1>
         )}
 
-        <button
-          onClick={() => setHighlightAll((v) => !v)}
-          title="Outline every hotspot  (press h)"
-          data-persona-control
-          className={[
-            'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
-            highlightAll
-              ? 'border-sky-400/50 bg-sky-400/15 text-sky-200'
-              : 'border-white/10 bg-white/[0.04] text-white/50 hover:text-white/80',
-          ].join(' ')}
-        >
-          Highlight all
-        </button>
+        {/* Hide audience selector and highlight for presenters */}
+        {!isPresenter && (
+          <>
+            {chatComponentId ? (
+              <AudienceSelector
+                audience={sessionAudience}
+                onChange={handleSessionAudienceChange}
+                disabled={sessionLoading}
+              />
+            ) : (
+              <AudienceSelector
+                audience={globalAudience}
+                onChange={setGlobalPersona}
+              />
+            )}
+
+            <button
+              onClick={() => setHighlightAll((v) => !v)}
+              title="Outline every hotspot  (press h)"
+              data-persona-control
+              className={[
+                'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                highlightAll
+                  ? 'border-sky-400/50 bg-sky-400/15 text-sky-200'
+                  : 'border-white/10 bg-white/[0.04] text-white/50 hover:text-white/80',
+              ].join(' ')}
+            >
+              Highlight all
+            </button>
+          </>
+        )}
       </header>
 
       <main className="flex flex-1 items-center justify-center px-6 py-5">
@@ -158,14 +191,14 @@ export default function Deck() {
               slide={slide}
               aspectRatio={deck.aspectRatio ?? 16 / 9}
               persona={globalAudience}
-              highlightAll={highlightAll}
-              pinnedId={pinnedId}
-              onPin={setPinnedId}
-              onChatOpen={setChatComponentId}
-              onCloseChat={() => setChatComponentId(null)}
-              chatComponentId={chatComponentId}
+              highlightAll={!isPresenter && highlightAll}
+              pinnedId={!isPresenter ? pinnedId : null}
+              onPin={!isPresenter ? (id: string | null) => setPinnedId(id) : undefined}
+              onChatOpen={!isPresenter ? setChatComponentId : undefined}
+              onCloseChat={!isPresenter ? () => setChatComponentId(null) : undefined}
+              chatComponentId={!isPresenter ? chatComponentId : null}
             />
-            {chatComponentId && (
+            {!isPresenter && chatComponentId && (
               <ChatPanel
                 messages={messages}
                 audience={sessionAudience}
@@ -183,9 +216,11 @@ export default function Deck() {
       </main>
 
       <footer className="flex items-center justify-between px-6 pb-5">
-        <p className="hidden text-[11px] text-white/25 md:block">
-          Click any highlighted text to chat · use audience selector to change tone · h to highlight all · ←/→ to move · Esc to close
-        </p>
+        {!isPresenter && (
+          <p className="hidden text-[11px] text-white/25 md:block">
+            Click any highlighted text to chat · use audience selector to change tone · h to highlight all · ←/→ to move · Esc to close
+          </p>
+        )}
         <div className="ml-auto">
           <SlideNav index={current} total={total} onGo={goTo} />
         </div>
