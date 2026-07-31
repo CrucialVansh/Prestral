@@ -84,11 +84,26 @@ class QueryMode(str, Enum):
     EXPLAIN = "explain"
 
 
+# Common presets the frontend can offer; any free-text role string is also accepted.
+AUDIENCE_PRESETS = (
+    "general",
+    "swe",
+    "marketing",
+    "executive",
+    "sales",
+    "student",
+    "designer",
+    "finance",
+)
+
+
 class QueryRequest(BaseModel):
     question: str = ""
     mode: QueryMode = QueryMode.ASK
     slide_index: Optional[int] = None
     component_id: Optional[str] = None
+    # Who is reading — controls depth, jargon, and framing (e.g. "swe", "marketing", or free text).
+    audience: str = "general"
 
 
 class SourceCitation(BaseModel):
@@ -100,6 +115,7 @@ class QueryResponse(BaseModel):
     answer: str
     sources: list[SourceCitation] = Field(default_factory=list)
     mode: QueryMode
+    audience: str = "general"
 
 
 class ChatRole(str, Enum):
@@ -124,6 +140,7 @@ class ChatSession(BaseModel):
     component_id: str
     slide_index: int
     title: str = ""
+    audience: str = "general"
     messages: list[ChatMessage] = Field(default_factory=list)
     created_at: str
     updated_at: str
@@ -135,6 +152,7 @@ class ChatSessionSummary(BaseModel):
     component_id: str
     slide_index: int
     title: str
+    audience: str = "general"
     message_count: int
     created_at: str
     updated_at: str
@@ -142,19 +160,27 @@ class ChatSessionSummary(BaseModel):
 
 class CreateSessionRequest(BaseModel):
     component_id: str
+    audience: str = "general"
     # If true, always create a new session even if one already exists for this component.
     force_new: bool = False
+
+
+class UpdateSessionRequest(BaseModel):
+    audience: Optional[str] = None
 
 
 class SendMessageRequest(BaseModel):
     content: str = ""
     mode: QueryMode = QueryMode.ASK
+    # Optional one-turn override; otherwise the session's audience is used.
+    audience: Optional[str] = None
 
 
 class SendMessageResponse(BaseModel):
     session_id: str
     user_message: ChatMessage
     assistant_message: ChatMessage
+    audience: str = "general"
 
 
 class HealthResponse(BaseModel):

@@ -29,6 +29,62 @@ Respond with ONLY valid JSON of the form:
 }
 """
 
+_AUDIENCE_GUIDANCE: dict[str, str] = {
+    "general": (
+        "Audience: a general professional reader. Use clear language, light jargon, "
+        "and a balanced level of detail. Define uncommon terms briefly."
+    ),
+    "swe": (
+        "Audience: a software engineer. Prefer technical precision, systems thinking, "
+        "implementation implications, trade-offs, and concrete mechanisms. "
+        "Jargon is OK when accurate; skip fluff and marketing spin."
+    ),
+    "marketing": (
+        "Audience: a marketing professional. Emphasize positioning, narrative, audience "
+        "impact, messaging hooks, and competitive differentiation. Keep technical depth light "
+        "unless it affects the story; translate metrics into what they mean for go-to-market."
+    ),
+    "executive": (
+        "Audience: an executive / decision-maker. Lead with the so-what, risks, and decisions. "
+        "Be concise, prioritize outcomes and numbers, minimize implementation detail."
+    ),
+    "sales": (
+        "Audience: a sales professional. Focus on customer value, objections, proof points, "
+        "and how to pitch this slide beat. Keep it actionable and buyer-facing."
+    ),
+    "student": (
+        "Audience: a student learning the topic. Explain step-by-step, define terms, "
+        "use simple analogies, and avoid assuming prior domain expertise."
+    ),
+    "designer": (
+        "Audience: a product/UX designer. Emphasize user impact, flows, clarity of the slide's "
+        "message, and how information hierarchy or visuals support understanding."
+    ),
+    "finance": (
+        "Audience: a finance / analyst reader. Emphasize numbers, drivers, margins, assumptions, "
+        "and variance. Be precise with figures and call out what is / isn't supported by the doc."
+    ),
+}
+
+
+def normalize_audience(audience: str | None) -> str:
+    value = (audience or "general").strip()
+    return value if value else "general"
+
+
+def _audience_system_prompt(audience: str) -> str:
+    key = normalize_audience(audience).lower()
+    preset = _AUDIENCE_GUIDANCE.get(key)
+    if preset:
+        return preset
+    # Free-text role from the frontend (e.g. "junior PM at a B2B SaaS startup")
+    return (
+        f"Audience / role: {normalize_audience(audience)}. "
+        "Adapt complexity, vocabulary, examples, and framing to what this person needs. "
+        "Do not over-explain basics they would already know; do not drown them in "
+        "irrelevant detail for their role. Stay faithful to the supporting document."
+    )
+
 
 def _mode_system_prompt(mode: str) -> str:
     if mode == "summarize":
@@ -140,6 +196,7 @@ class LLMClient:
         question: str,
         anchor_text: str,
         retrieved_chunks: list[DocChunk],
+        audience: str = "general",
     ) -> str:
         return self.answer_chat(
             mode=mode,
@@ -147,6 +204,7 @@ class LLMClient:
             anchor_text=anchor_text,
             retrieved_chunks=retrieved_chunks,
             history=[],
+            audience=audience,
         )
 
     def answer_chat(
@@ -157,6 +215,7 @@ class LLMClient:
         anchor_text: str,
         retrieved_chunks: list[DocChunk],
         history: list[dict[str, str]],
+        audience: str = "general",
     ) -> str:
         """
         Multi-turn answer. `history` is prior [{role, content}, ...] excluding
@@ -168,6 +227,8 @@ class LLMClient:
 
         system = (
             _mode_system_prompt(mode)
+            + "\n\n"
+            + _audience_system_prompt(audience)
             + "\n\nYou are in a multi-turn chat about a specific slide component. "
             "Stay focused on that component and the supporting document. "
             "Use prior turns for continuity when the user refers to earlier answers."

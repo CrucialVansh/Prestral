@@ -85,22 +85,32 @@ def test_sessions_http_create_list_get(client) -> None:
 
     created = client.post(
         f"/api/decks/{deck.id}/sessions",
-        json={"component_id": "slide0-shape0"},
+        json={"component_id": "slide0-shape0", "audience": "marketing"},
     )
     assert created.status_code == 200, created.text
     body = created.json()
     assert body["component_id"] == "slide0-shape0"
+    assert body["audience"] == "marketing"
     assert body["messages"] == []
 
     again = client.post(
         f"/api/decks/{deck.id}/sessions",
-        json={"component_id": "slide0-shape0"},
+        json={"component_id": "slide0-shape0", "audience": "swe"},
     )
     assert again.json()["id"] == body["id"]
+    assert again.json()["audience"] == "swe"
+
+    patched = client.patch(
+        f"/api/decks/{deck.id}/sessions/{body['id']}",
+        json={"audience": "executive"},
+    )
+    assert patched.status_code == 200
+    assert patched.json()["audience"] == "executive"
 
     listed = client.get(f"/api/decks/{deck.id}/sessions")
     assert listed.status_code == 200
     assert len(listed.json()) == 1
+    assert listed.json()[0]["audience"] == "executive"
 
     fetched = client.get(f"/api/decks/{deck.id}/sessions/{body['id']}")
     assert fetched.status_code == 200

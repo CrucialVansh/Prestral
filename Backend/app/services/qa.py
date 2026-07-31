@@ -77,9 +77,15 @@ def answer_query(deck: Deck, request: QueryRequest, settings: Settings) -> Query
         question=request.question,
         anchor_text=anchor,
         retrieved_chunks=retrieved,
+        audience=request.audience,
     )
 
     sources = [
         SourceCitation(text=ch.text, source=ch.source) for ch in retrieved
     ]
-    return QueryResponse(answer=answer, sources=sources, mode=request.mode)
+    return QueryResponse(
+        answer=answer,
+        sources=sources,
+        mode=request.mode,
+        audience=request.audience,
+    )

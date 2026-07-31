@@ -9,8 +9,9 @@ from app.models.schemas import (
     CreateSessionRequest,
     SendMessageRequest,
     SendMessageResponse,
+    UpdateSessionRequest,
 )
-from app.services.chat import get_or_create_session, send_message
+from app.services.chat import get_or_create_session, send_message, update_session
 from app.store import deck_store, session_store
 
 router = APIRouter(prefix="/api/decks", tags=["sessions"])
@@ -24,6 +25,9 @@ async def create_session(deck_id: str, body: CreateSessionRequest) -> ChatSessio
     By default this is get-or-create on (deck_id, component_id): reopening the
     same hotspot returns the existing session so the user can continue the thread.
     Pass force_new=true to start a fresh session for that component.
+
+    `audience` (e.g. swe, marketing, executive, or free text) controls how the
+    assistant pitches explanations for this session.
     """
     deck = deck_store.get(deck_id)
     if deck is None:
@@ -48,6 +52,22 @@ async def get_session(deck_id: str, session_id: str) -> ChatSession:
     if session is None or session.deck_id != deck_id:
         raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
     return session
+
+
+@router.patch("/{deck_id}/sessions/{session_id}", response_model=ChatSession)
+async def patch_session(
+    deck_id: str,
+    session_id: str,
+    body: UpdateSessionRequest,
+) -> ChatSession:
+    """Update session settings such as audience/role without sending a message."""
+    deck = deck_store.get(deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=f"Deck not found: {deck_id}")
+    session = session_store.get(session_id)
+    if session is None or session.deck_id != deck_id:
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+    return update_session(session, body)
 
 
 @router.post(

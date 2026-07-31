@@ -33,9 +33,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | `GET` | `/api/decks` | List processed decks (in-memory) |
 | `GET` | `/api/decks/{deck_id}` | Re-fetch a processed deck |
 | `POST` | `/api/decks/{deck_id}/query` | Single-shot ask / summarize / explain |
-| `POST` | `/api/decks/{deck_id}/sessions` | Get-or-create chat session for a `component_id` |
+| `POST` | `/api/decks/{deck_id}/sessions` | Get-or-create chat session for a `component_id` (optional `audience`) |
 | `GET` | `/api/decks/{deck_id}/sessions` | List sessions (switch between component chats) |
 | `GET` | `/api/decks/{deck_id}/sessions/{session_id}` | Fetch session + full message history |
+| `PATCH` | `/api/decks/{deck_id}/sessions/{session_id}` | Update session `audience` / role |
 | `POST` | `/api/decks/{deck_id}/sessions/{session_id}/messages` | Send a multi-turn chat message |
 | `DELETE` | `/api/decks/{deck_id}/sessions/{session_id}` | Delete a session |
 
@@ -108,11 +109,20 @@ Each session is linked to one `component_id`. Opening the same hotspot again ret
 same session (unless you pass `"force_new": true`), so the UI can switch between sessions
 and resume history.
 
+Pass `audience` so explanations match the reader's role. Presets: `general`, `swe`,
+`marketing`, `executive`, `sales`, `student`, `designer`, `finance` — or any free-text
+role string (e.g. `"junior PM"`).
+
 ```bash
-# Open (get-or-create) a session for a hotspot
+# Open (get-or-create) a session for a hotspot as a marketer
 curl -s -X POST http://localhost:8000/api/decks/<deck_id>/sessions \
   -H "Content-Type: application/json" \
-  -d '{"component_id":"slide0-shape1"}'
+  -d '{"component_id":"slide0-shape1","audience":"marketing"}'
+
+# Change role mid-session
+curl -s -X PATCH http://localhost:8000/api/decks/<deck_id>/sessions/<session_id> \
+  -H "Content-Type: application/json" \
+  -d '{"audience":"swe"}'
 
 # List all sessions for the deck (for a session switcher UI)
 curl -s http://localhost:8000/api/decks/<deck_id>/sessions
@@ -120,7 +130,7 @@ curl -s http://localhost:8000/api/decks/<deck_id>/sessions
 # Multi-turn message (history is kept server-side)
 curl -s -X POST http://localhost:8000/api/decks/<deck_id>/sessions/<session_id>/messages \
   -H "Content-Type: application/json" \
-  -d '{"mode":"ask","content":"What drove the revenue growth?"}'
+  -d '{"mode":"explain","content":""}'
 
 curl -s -X POST http://localhost:8000/api/decks/<deck_id>/sessions/<session_id>/messages \
   -H "Content-Type: application/json" \

@@ -92,6 +92,7 @@ class SessionStore:
                     component_id=s.component_id,
                     slide_index=s.slide_index,
                     title=s.title,
+                    audience=s.audience,
                     message_count=len(s.messages),
                     created_at=s.created_at,
                     updated_at=s.updated_at,

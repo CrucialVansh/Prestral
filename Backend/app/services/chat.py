@@ -17,9 +17,10 @@ from app.models.schemas import (
     SendMessageRequest,
     SendMessageResponse,
     SourceCitation,
+    UpdateSessionRequest,
 )
 from app.services.embeddings import EmbeddingsClient, top_k_similar
-from app.services.llm import LLMClient
+from app.services.llm import LLMClient, normalize_audience
 from app.services.qa import _build_anchor, _find_component
 from app.store import session_store
 
@@ -43,9 +44,16 @@ def get_or_create_session(
     if comp is None:
         raise HTTPException(status_code=404, detail=f"Component not found: {body.component_id}")
 
+    audience = normalize_audience(body.audience)
+
     if not body.force_new:
         existing = session_store.get_by_component(deck.id, body.component_id)
         if existing is not None:
+            # Keep the thread, but let the frontend update the reader's role.
+            if existing.audience != audience:
+                existing.audience = audience
+                existing.updated_at = _utc_now()
+                session_store.put(existing, index_component=True)
             return existing
 
     now = _utc_now()
@@ -55,12 +63,20 @@ def get_or_create_session(
         component_id=comp.id,
         slide_index=slide.index if slide else 0,
         title=_session_title(comp.text, comp.id),
+        audience=audience,
         messages=[],
         created_at=now,
         updated_at=now,
     )
-    # force_new: still index by component so "current" session for that hotspot is this one
     session_store.put(session, index_component=True)
+    return session
+
+
+def update_session(session: ChatSession, body: UpdateSessionRequest) -> ChatSession:
+    if body.audience is not None:
+        session.audience = normalize_audience(body.audience)
+        session.updated_at = _utc_now()
+        session_store.put(session, index_component=True)
     return session
 
 
@@ -73,7 +89,13 @@ def send_message(
     if body.mode == QueryMode.ASK and not body.content.strip():
         raise HTTPException(status_code=400, detail="content is required when mode is 'ask'")
 
-    # Build the same component anchor the single-shot query uses.
+    audience = normalize_audience(
+        body.audience if body.audience is not None else session.audience
+    )
+    # Persist one-turn overrides onto the session so the switcher shows current role.
+    if body.audience is not None and session.audience != audience:
+        session.audience = audience
+
     anchor = _build_anchor(
         deck,
         QueryRequest(
@@ -81,6 +103,7 @@ def send_message(
             mode=body.mode,
             component_id=session.component_id,
             slide_index=session.slide_index,
+            audience=audience,
         ),
     )
 
@@ -102,6 +125,7 @@ def send_message(
         anchor_text=anchor,
         retrieved_chunks=retrieved,
         history=history,
+        audience=audience,
     )
 
     now = _utc_now()
@@ -138,4 +162,5 @@ def send_message(
         session_id=session.id,
         user_message=user_msg,
         assistant_message=assistant_msg,
+        audience=audience,
     )
