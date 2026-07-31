@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * The slide PNGs are rendered on #0e1117, so the page uses the same base
+ * colour: the slide then sits in the page with no visible letterbox seam.
+ */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-[#0e1117] text-[#e9eef5] antialiased;
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  /* Hotspots are <button>s for keyboard access; suppress the default ring in
+     favour of the accent ring they already use for the highlight-all state. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-sky-400/70;
+  }
+}
