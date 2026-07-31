@@ -1,43 +1,41 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getDeckStatus } from '../api/client'
-import type { DeckStatus } from '../types'
+import { mockProgress } from '../api/client'
 
 const POLL_MS = 1500
+const FAKE_SLIDE_COUNT = 3
 
 /**
- * Pre-computing every persona variant takes 30–60s, so this is real UI rather
- * than a spinner: per-slide progress plus thumbnails streaming in as they
- * render. Dead time the audience can watch is dead time that looks intentional.
+ * Fake processing screen while the backend status endpoint is not yet implemented.
+ * Shows a progress bar that fills over time, then redirects to the deck.
  */
 export default function Processing() {
   const { deckId } = useParams<{ deckId: string }>()
   const navigate = useNavigate()
-  const [status, setStatus] = useState<DeckStatus | null>(null)
+  const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!deckId) return
+    if (!deckId) {
+      navigate('/')
+      return
+    }
     let stopped = false
     let timer: ReturnType<typeof setTimeout>
 
     async function poll() {
       try {
-        const next = await getDeckStatus(deckId!)
+        const p = mockProgress(deckId!)
         if (stopped) return
-        setStatus(next)
+        setProgress(p)
 
-        if (next.state === 'ready') {
+        if (p >= 1) {
           navigate(`/deck/${deckId}/0`, { replace: true })
-          return
-        }
-        if (next.state === 'error') {
-          setError(next.error ?? 'Processing failed')
           return
         }
       } catch (err) {
         if (stopped) return
-        setError(err instanceof Error ? err.message : 'Lost contact with the server')
+        setError(err instanceof Error ? err.message : 'Processing failed')
         return
       }
       if (!stopped) timer = setTimeout(poll, POLL_MS)
@@ -50,17 +48,18 @@ export default function Processing() {
     }
   }, [deckId, navigate])
 
-  const pct = Math.round((status?.progress ?? 0) * 100)
+  const pct = Math.round(progress * 100)
+  const done = Math.round(progress * FAKE_SLIDE_COUNT)
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col justify-center gap-6 px-6">
       <div>
         <h1 className="text-lg font-medium">
-          {error ? 'Something went wrong' : (status?.message ?? 'Starting up')}
+          {error ? 'Something went wrong' : 'Processing deck'}
         </h1>
         {!error && (
           <p className="mt-1 text-sm text-white/40">
-            Writing a Marketing, Product and Engineering reading of every slide.
+            Analysing slides and extracting components.
           </p>
         )}
       </div>
@@ -84,24 +83,9 @@ export default function Processing() {
             />
           </div>
 
-          {status && status.slidesTotal > 0 && (
-            <p className="text-xs tabular-nums text-white/35">
-              {status.slidesDone} of {status.slidesTotal} slides · {pct}%
-            </p>
-          )}
-
-          {status && status.readyThumbnails.length > 0 && (
-            <div className="grid grid-cols-4 gap-3">
-              {status.readyThumbnails.map((src) => (
-                <img
-                  key={src}
-                  src={src}
-                  alt=""
-                  className="animate-fadeUp aspect-video w-full rounded border border-white/10 object-cover"
-                />
-              ))}
-            </div>
-          )}
+          <p className="text-xs tabular-nums text-white/35">
+            {done} of {FAKE_SLIDE_COUNT} slides · {pct}%
+          </p>
         </>
       )}
     </div>

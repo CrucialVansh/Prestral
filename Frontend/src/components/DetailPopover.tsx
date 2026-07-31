@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { PERSONAS, type Hotspot, type PersonaId } from '../types'
+import { AUDIENCE_PRESETS, type Component, type Audience } from '../types'
 
 const FADE_MS = 180
 
 interface Props {
-  hotspot: Hotspot
-  persona: PersonaId
+  hotspot: Component
+  persona: Audience
   pinned: boolean
   onUnpin: () => void
 }
@@ -29,11 +29,17 @@ export function DetailPopover({ hotspot, persona, pinned, onUnpin }: Props) {
     return () => clearTimeout(t)
   }, [persona, shownPersona])
 
-  const variant = hotspot.variants[shownPersona]
-  const meta = PERSONAS.find((p) => p.id === shownPersona)
+  // Get the display label for the audience
+  const getAudienceLabel = (aud: Audience): string => {
+    if (AUDIENCE_PRESETS.includes(aud as any)) {
+      return aud
+    }
+    // For free-text audiences, capitalize and use as-is
+    return aud.toString().charAt(0).toUpperCase() + aud.toString().slice(1)
+  }
 
-  // A deck missing one persona's variant should degrade, not crash the demo.
-  if (!variant) return null
+  // A component without context should degrade gracefully
+  if (!hotspot.context) return null
 
   return (
     <div
@@ -43,10 +49,7 @@ export function DetailPopover({ hotspot, persona, pinned, onUnpin }: Props) {
     >
       <div className="mb-2 flex items-center gap-2">
         <span className="rounded-full bg-sky-400/15 px-2 py-0.5 text-[11px] font-medium text-sky-300">
-          {meta?.label ?? shownPersona}
-        </span>
-        <span className="text-[11px] uppercase tracking-wide text-white/35">
-          {variant.mode === 'simplified' ? 'Simplified' : 'Expanded'}
+          {getAudienceLabel(shownPersona)}
         </span>
 
         {pinned && (
@@ -66,14 +69,14 @@ export function DetailPopover({ hotspot, persona, pinned, onUnpin }: Props) {
         className="transition-opacity duration-[180ms]"
         style={{ opacity: fading ? 0 : 1 }}
       >
-        <p className="text-[13.5px] leading-relaxed text-white/85">{variant.body}</p>
+        <p className="text-[13.5px] leading-relaxed text-white/85">{hotspot.context}</p>
 
         {/* Provenance is the difference between "the AI paraphrased this slide"
             and "the AI grounded this in our documents". Always show it if present. */}
-        {variant.sources && variant.sources.length > 0 && (
+        {hotspot.sources && hotspot.sources.length > 0 && (
           <p className="mt-3 border-t border-white/10 pt-2 text-[11px] text-white/40">
             <span className="text-white/30">Grounded in: </span>
-            {variant.sources.join(' · ')}
+            {hotspot.sources.join(' · ')}
           </p>
         )}
       </div>

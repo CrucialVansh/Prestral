@@ -1,20 +1,46 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { PersonaSlider } from '../components/PersonaSlider'
+import { AudienceSelector } from '../components/AudienceSelector'
+import { ChatPanel } from '../components/ChatPanel'
 import { SlideCanvas } from '../components/SlideCanvas'
 import { SlideNav } from '../components/SlideNav'
 import { useDeck } from '../hooks/useDeck'
 import { useKeyboardNav } from '../hooks/useKeyboardNav'
 import { usePersona } from '../hooks/usePersona'
+import { useSession } from '../hooks/useSession'
+import type { Audience } from '../types'
 
 export default function Deck() {
   const { deckId, slideIndex } = useParams<{ deckId: string; slideIndex: string }>()
   const navigate = useNavigate()
 
   const { deck, loading, error } = useDeck(deckId)
-  const { persona, index: personaIndex, setByIndex } = usePersona()
+  const { persona: globalAudience, setPersona: setGlobalPersona } = usePersona()
   const [highlightAll, setHighlightAll] = useState(false)
   const [pinnedId, setPinnedId] = useState<string | null>(null)
+  
+  // Chat state
+  const [chatComponentId, setChatComponentId] = useState<string | null>(null)
+  const [sessionAudience, setSessionAudience] = useState<Audience>(globalAudience)
+  
+  // Initialize session audience from global audience
+  useEffect(() => {
+    setSessionAudience(globalAudience)
+  }, [globalAudience])
+  
+  // Session management for the currently selected component
+  const { 
+    messages, 
+    loading: sessionLoading, 
+    error: sessionError, 
+    sendMessage,
+  } = useSession(deckId, chatComponentId ?? undefined, sessionAudience)
+  
+  // Update global audience when session audience changes
+  const handleSessionAudienceChange = useCallback(async (aud: Audience) => {
+    setSessionAudience(aud)
+    setGlobalPersona(aud)
+  }, [setGlobalPersona])
 
   const total = deck?.slides.length ?? 0
   const requested = Number(slideIndex)
@@ -63,8 +89,11 @@ export default function Deck() {
   useKeyboardNav({
     onPrev: () => step(-1),
     onNext: () => step(1),
-    onPersona: setByIndex,
-    onEscape: () => setPinnedId(null),
+    onPersona: () => {},
+    onEscape: () => {
+      setPinnedId(null)
+      setChatComponentId(null)
+    },
     onToggleHighlight: () => setHighlightAll((v) => !v),
   })
 
@@ -92,9 +121,20 @@ export default function Deck() {
           so a header that wrapped to two lines would push the slide off-screen.
           The title truncates instead. */}
       <header className="flex flex-nowrap items-center gap-4 border-b border-white/[0.07] px-6 py-3">
-        <h1 className="mr-auto min-w-0 truncate text-sm font-medium text-white/80">{deck.title}</h1>
+        <h1 className="mr-auto min-w-0 truncate text-sm font-medium text-white/80">{deck.slides_filename ?? 'Untitled'}</h1>
 
-        <PersonaSlider index={personaIndex} onChange={setByIndex} />
+        {chatComponentId ? (
+          <AudienceSelector
+            audience={sessionAudience}
+            onChange={handleSessionAudienceChange}
+            disabled={sessionLoading}
+          />
+        ) : (
+          <AudienceSelector
+            audience={globalAudience}
+            onChange={setGlobalPersona}
+          />
+        )}
 
         <button
           onClick={() => setHighlightAll((v) => !v)}
@@ -113,14 +153,30 @@ export default function Deck() {
 
       <main className="flex flex-1 items-center justify-center px-6 py-5">
         {slide ? (
-          <SlideCanvas
-            slide={slide}
-            aspectRatio={deck.aspectRatio}
-            persona={persona}
-            highlightAll={highlightAll}
-            pinnedId={pinnedId}
-            onPin={setPinnedId}
-          />
+          <div className="flex flex-1 items-center justify-center gap-4">
+            <SlideCanvas
+              slide={slide}
+              aspectRatio={deck.aspectRatio ?? 16 / 9}
+              persona={globalAudience}
+              highlightAll={highlightAll}
+              pinnedId={pinnedId}
+              onPin={setPinnedId}
+              onChatOpen={setChatComponentId}
+              onCloseChat={() => setChatComponentId(null)}
+              chatComponentId={chatComponentId}
+            />
+            {chatComponentId && (
+              <ChatPanel
+                messages={messages}
+                audience={sessionAudience}
+                loading={sessionLoading}
+                error={sessionError}
+                onSend={sendMessage}
+                onAudienceChange={handleSessionAudienceChange}
+                onClose={() => setChatComponentId(null)}
+              />
+            )}
+          </div>
         ) : (
           <p className="text-sm text-white/40">This deck has no slides.</p>
         )}
@@ -128,7 +184,7 @@ export default function Deck() {
 
       <footer className="flex items-center justify-between px-6 pb-5">
         <p className="hidden text-[11px] text-white/25 md:block">
-          Hover any highlighted text · click to pin · 1/2/3 to change view · ←/→ to move
+          Click any highlighted text to chat · use audience selector to change tone · h to highlight all · ←/→ to move · Esc to close
         </p>
         <div className="ml-auto">
           <SlideNav index={current} total={total} onGo={goTo} />

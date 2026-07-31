@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import {
   FloatingPortal,
   autoUpdate,
@@ -13,16 +13,19 @@ import {
   useRole,
 } from '@floating-ui/react'
 import { DetailPopover } from './DetailPopover'
-import type { Hotspot as HotspotData, PersonaId } from '../types'
+import type { Component as HotspotData, Audience } from '../types'
 
 interface Props {
   hotspot: HotspotData
   /** Absolute percentage box, computed by SlideCanvas — the only geometry owner. */
   style: CSSProperties
-  persona: PersonaId
+  persona: Audience
   highlighted: boolean
   pinned: boolean
   onPin: (id: string | null) => void
+  onChatOpen?: (componentId: string) => void
+  onClose?: () => void
+  isChatOpen?: boolean
 }
 
 /**
@@ -31,9 +34,9 @@ interface Props {
  * Rendered as a <button> rather than a <div> so it is reachable by Tab and
  * announced to screen readers for free.
  */
-export function Hotspot({ hotspot, style, persona, highlighted, pinned, onPin }: Props) {
+export function Hotspot({ hotspot, style, persona, highlighted, pinned, onPin, onChatOpen, onClose, isChatOpen = false }: Props) {
   const [hovered, setHovered] = useState(false)
-  const open = pinned || hovered
+  const open = pinned || hovered || isChatOpen
 
   const { refs, floatingStyles, context } = useFloating({
     open,
@@ -66,7 +69,7 @@ export function Hotspot({ hotspot, style, persona, highlighted, pinned, onPin }:
     handleClose: safePolygon({ blockPointerEvents: false }),
   })
   const dismiss = useDismiss(context, {
-    enabled: pinned,
+    enabled: pinned || isChatOpen,
     outsidePress: (event) => {
       // Don't treat clicks on persona/highlight controls as a dismiss —
       // switching view level shouldn't collapse a pinned card.
@@ -74,27 +77,44 @@ export function Hotspot({ hotspot, style, persona, highlighted, pinned, onPin }:
       return !target.closest('[data-persona-control]')
     },
   })
+
+  // When popover is dismissed and chat is open, close the chat
+  useEffect(() => {
+    if (!open && isChatOpen && onClose) {
+      onClose()
+    }
+  }, [open, isChatOpen, onClose])
   const role = useRole(context, { role: 'tooltip' })
 
   const { getReferenceProps, getFloatingProps } = useInteractions([hover, dismiss, role])
 
-  const isText = (hotspot.kind ?? 'text') === 'text'
+  const isText = (hotspot.type ?? 'text_box') === 'text_box'
 
   return (
     <>
       <button
         ref={refs.setReference}
         {...getReferenceProps({
-          onClick: () => {
-            // Clear the hover flag as we pin, otherwise it stays latched true
-            // (useHover is disabled while pinned, so no mouseleave arrives) and
-            // the card would linger after unpinning.
-            setHovered(false)
-            onPin(pinned ? null : hotspot.id)
+          onClick: (e) => {
+            e.stopPropagation()
+            // If chat is enabled, open chat on click
+            if (onChatOpen) {
+              setHovered(false)
+              if (isChatOpen && onClose) {
+                // Clicking the hotspot with chat open closes it
+                onClose()
+              } else {
+                onChatOpen(hotspot.id)
+              }
+            } else {
+              // Otherwise, toggle pin (old behavior)
+              setHovered(false)
+              onPin(pinned ? null : hotspot.id)
+            }
           },
         })}
         style={style}
-        aria-label={`Explain: ${hotspot.originalText}`}
+        aria-label={`Explain: ${hotspot.text}`}
         className={[
           'absolute cursor-help transition-colors duration-150',
           isText
@@ -104,6 +124,7 @@ export function Hotspot({ hotspot, style, persona, highlighted, pinned, onPin }:
           open ? 'bg-sky-400/[0.15]' : 'bg-sky-400/[0.06] hover:bg-sky-400/[0.15]',
           highlighted ? 'ring-2 ring-sky-400/70' : '',
           pinned ? 'ring-2 ring-sky-400' : '',
+          isChatOpen ? 'ring-2 ring-sky-300 bg-sky-400/[0.2]' : '',
         ].join(' ')}
       />
 

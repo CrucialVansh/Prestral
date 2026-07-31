@@ -1,4 +1,4 @@
-import { PERSONAS } from '../types'
+import { AUDIENCE_PRESETS } from '../types'
 
 interface Props {
   index: number
@@ -27,24 +27,24 @@ export function PersonaSlider({ index, onChange }: Props) {
           aria-hidden
           className="absolute inset-y-1 left-1 rounded-full bg-sky-500/90 transition-transform duration-200 ease-out"
           style={{
-            width: `calc((100% - 0.5rem) / ${PERSONAS.length})`,
+            width: `calc((100% - 0.5rem) / ${AUDIENCE_PRESETS.length})`,
             transform: `translateX(${index * 100}%)`,
           }}
         />
 
-        {PERSONAS.map((p, i) => (
+        {AUDIENCE_PRESETS.map((p, i) => (
           <button
-            key={p.id}
+            key={i}
             role="radio"
             aria-checked={i === index}
-            title={`${p.blurb}  (press ${i + 1})`}
+            title={`${p}  (press ${i + 1})`}
             onClick={() => onChange(i)}
             className={[
               'relative z-10 flex-1 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-medium transition-colors',
               i === index ? 'text-white' : 'text-white/50 hover:text-white/80',
             ].join(' ')}
           >
-            {p.label}
+            {p}
           </button>
         ))}
       </div>

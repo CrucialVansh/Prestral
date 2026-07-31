@@ -1,321 +1,180 @@
 {
-  "deckId": "demo",
-  "title": "Ingest Pipeline Migration — Q3 Platform Review",
-  "aspectRatio": 1.7778,
-  "personas": [
-    "marketing",
-    "product",
-    "engineering"
-  ],
-  "contextFiles": [
+  "id": "demo",
+  "slides_filename": "Ingest Pipeline Migration — Q3 Platform Review",
+  "source": "local",
+  "doc_filenames": [
     "q3-roadmap.pdf",
     "arch-decision-014.md",
     "latency-audit-jun.pdf",
     "finance-approval-q3.pdf"
   ],
+  "aspectRatio": 1.7778,
   "slides": [
     {
       "index": 0,
       "imageUrl": "/mock/slide-0.png",
-      "title": "Title",
-      "hotspots": [
+      "notes": "",
+      "components": [
         {
           "id": "s0h1",
+          "type": "title",
           "bbox": {
-            "x": 0.0625,
-            "y": 0.22444,
-            "w": 0.70643,
-            "h": 0.14
+            "left": 0.0625,
+            "top": 0.22444,
+            "width": 0.70643,
+            "height": 0.14
           },
-          "originalText": "Ingest Pipeline Migration",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "The project that makes our product's data arrive in near real time instead of once a night. It is the reason we can finally say “live dashboards” in a customer conversation without a caveat.",
-              "sources": [
-                "q3-roadmap.pdf p.2"
-              ]
-            },
-            "product": {
-              "mode": "expanded",
-              "body": "Replaces the nightly batch load with a continuous stream. Unblocks three roadmap items that were gated on fresh data: live usage dashboards, alerting, and usage-based billing. Scope is ingest only — the warehouse schema is unchanged.",
-              "sources": [
-                "q3-roadmap.pdf p.2",
-                "arch-decision-014.md"
-              ]
-            },
-            "engineering": {
-              "mode": "expanded",
-              "body": "Migration from a scheduled batch ETL to change-data-capture streaming. Debezium tails the Postgres WAL into Kafka; Flink handles enrichment and writes to the warehouse. The legacy Airflow DAGs stay running in parallel until cutover completes.",
-              "sources": [
-                "arch-decision-014.md"
-              ]
-            }
-          }
+          "text": "Ingest Pipeline Migration",
+          "context": "Replaces the nightly batch load with a continuous stream. Unblocks three roadmap items that were gated on fresh data: live usage dashboards, alerting, and usage-based billing. Scope is ingest only — the warehouse schema is unchanged.",
+          "sources": [
+            "q3-roadmap.pdf p.2",
+            "arch-decision-014.md"
+          ]
         },
         {
           "id": "s0h2",
+          "type": "text_box",
           "bbox": {
-            "x": 0.0625,
-            "y": 0.76889,
-            "w": 0.64286,
-            "h": 0.05778
+            "left": 0.0625,
+            "top": 0.76889,
+            "width": 0.64286,
+            "height": 0.05778
           },
-          "originalText": "Hover any highlighted text. The explanation rewrites itself for your discipline.",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "Same deck, three readings. Nobody has to sit through detail meant for someone else, and nobody has to guess at a term they have never used."
-            },
-            "product": {
-              "mode": "simplified",
-              "body": "One artefact instead of three. The deck stops being a lowest-common-denominator document that under-serves every room it enters."
-            },
-            "engineering": {
-              "mode": "simplified",
-              "body": "Elaborations are pre-computed per persona at upload and cached in the deck JSON, so switching view level is a client-side re-render with no network round trip."
-            }
-          }
+          "text": "Hover any highlighted text. The explanation rewrites itself for your discipline.",
+          "context": "One artefact instead of three. The deck stops being a lowest-common-denominator document that under-serves every room it enters.",
+          "sources": []
         }
       ]
     },
     {
       "index": 1,
       "imageUrl": "/mock/slide-1.png",
-      "title": "Approach",
-      "hotspots": [
+      "notes": "",
+      "components": [
         {
           "id": "s1h1",
+          "type": "text_box",
           "bbox": {
-            "x": 0.0625,
-            "y": 0.23556,
-            "w": 0.68102,
-            "h": 0.07111
+            "left": 0.0625,
+            "top": 0.23556,
+            "width": 0.68102,
+            "height": 0.07111
           },
-          "originalText": "Replace nightly batch ETL with event-driven CDC over Kafka",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "Today the system copies everything once a night. After this change it reacts to each update the moment it happens — like switching from a daily newspaper to a live feed."
-            },
-            "product": {
-              "mode": "expanded",
-              "body": "Removes the up-to-24-hour staleness window that drives most “why is my number wrong?” support tickets. Cost: an always-on streaming service to operate, versus a job that only ran at 2am."
-            },
-            "engineering": {
-              "mode": "expanded",
-              "body": "CDC = change data capture. Debezium tails the Postgres write-ahead log and emits one message per row change to Kafka, so we stop issuing full-table scans against the primary. Ordering is preserved per partition key, which is the customer ID.",
-              "sources": [
-                "arch-decision-014.md"
-              ]
-            }
-          }
+          "text": "Replace nightly batch ETL with event-driven CDC over Kafka",
+          "context": "Removes the up-to-24-hour staleness window that drives most 'why is my number wrong?' support tickets. Cost: an always-on streaming service to operate, versus a job that only ran at 2am.",
+          "sources": [
+            "arch-decision-014.md"
+          ]
         },
         {
           "id": "s1h2",
+          "type": "text_box",
           "bbox": {
-            "x": 0.0625,
-            "y": 0.34667,
-            "w": 0.56491,
-            "h": 0.07111
+            "left": 0.0625,
+            "top": 0.34667,
+            "width": 0.56491,
+            "height": 0.07111
           },
-          "originalText": "Cut p99 ingest latency from 42 min to under 90 s",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "Data shows up in about a minute instead of the better part of an hour. “p99” means this holds even on the slowest 1% of days, not just on a good one."
-            },
-            "product": {
-              "mode": "expanded",
-              "body": "The 90-second target is what makes in-product alerting viable — below the threshold where a user would rather check the source system directly. We measured 42 min at p99 over the last quarter.",
-              "sources": [
-                "latency-audit-jun.pdf"
-              ]
-            },
-            "engineering": {
-              "mode": "expanded",
-              "body": "p99 is the 99th percentile: 1 in 100 events is slower than this. Tail latency, not the mean, is the binding constraint — it is dominated by batch window alignment, which streaming removes entirely.",
-              "sources": [
-                "latency-audit-jun.pdf"
-              ]
-            }
-          }
+          "text": "Cut p99 ingest latency from 42 min to under 90 s",
+          "context": "The 90-second target is what makes in-product alerting viable — below the threshold where a user would rather check the source system directly. We measured 42 min at p99 over the last quarter.",
+          "sources": [
+            "latency-audit-jun.pdf"
+          ]
         },
         {
           "id": "s1h3",
+          "type": "text_box",
           "bbox": {
-            "x": 0.0625,
-            "y": 0.45778,
-            "w": 0.64016,
-            "h": 0.07111
+            "left": 0.0625,
+            "top": 0.45778,
+            "width": 0.64016,
+            "height": 0.07111
           },
-          "originalText": "Backfill via idempotent replay; dual-write during cutover",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "We can move historical data across, and re-run the move safely if something goes wrong. During the switchover both systems run at once, so there is no window where the product is down."
-            },
-            "product": {
-              "mode": "expanded",
-              "body": "This is the de-risking step. Dual-write means we can abort the migration at any point and fall back to the old pipeline with no data loss — worth the extra two weeks of engineering time."
-            },
-            "engineering": {
-              "mode": "expanded",
-              "body": "Idempotent = replaying the same event twice produces the same end state, so a failed backfill can simply be re-run rather than reconciled by hand. Achieved with upserts keyed on (entity_id, source_lsn). Dual-write costs ~2x warehouse writes for the cutover fortnight."
-            }
-          }
+          "text": "Backfill via idempotent replay; dual-write during cutover",
+          "context": "This is the de-risking step. Dual-write means we can abort the migration at any point and fall back to the old pipeline with no data loss — worth the extra two weeks of engineering time.",
+          "sources": []
         },
         {
           "id": "s1h4",
+          "type": "text_box",
           "bbox": {
-            "x": 0.0625,
-            "y": 0.56889,
-            "w": 0.69903,
-            "h": 0.07111
+            "left": 0.0625,
+            "top": 0.56889,
+            "width": 0.69903,
+            "height": 0.07111
           },
-          "originalText": "Retire the nightly cron and deprecate the legacy Airflow DAGs",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "The old machinery gets switched off, which is where the maintenance saving comes from. Nothing customer-facing depends on it once the new path is live."
-            },
-            "product": {
-              "mode": "expanded",
-              "body": "Removes roughly 9 engineer-hours a week of on-call toil. That capacity is already allocated to the Q4 alerting work, so the saving is real rather than notional.",
-              "sources": [
-                "q3-roadmap.pdf p.7"
-              ]
-            },
-            "engineering": {
-              "mode": "expanded",
-              "body": "A DAG is a directed acyclic graph — Airflow's unit of scheduled work. We are removing 14 of them, along with the shared operator library that has been the source of most 2am pages this year."
-            }
-          }
+          "text": "Retire the nightly cron and deprecate the legacy Airflow DAGs",
+          "context": "Removes roughly 9 engineer-hours a week of on-call toil. That capacity is already allocated to the Q4 alerting work, so the saving is real rather than notional.",
+          "sources": [
+            "q3-roadmap.pdf p.7"
+          ]
         }
       ]
     },
     {
       "index": 2,
       "imageUrl": "/mock/slide-2.png",
-      "title": "Impact",
-      "hotspots": [
+      "notes": "",
+      "components": [
         {
           "id": "s2h1",
+          "type": "text_box",
           "bbox": {
-            "x": 0.0625,
-            "y": 0.25778,
-            "w": 0.23402,
-            "h": 0.09
+            "left": 0.0625,
+            "top": 0.25778,
+            "width": 0.23402,
+            "height": 0.09
           },
-          "originalText": "42 min → 90 s",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "The headline number for the launch post: dashboards go from hours behind to about a minute behind."
-            },
-            "product": {
-              "mode": "expanded",
-              "body": "Measured at p99 against the June baseline. The 90 s figure is the target, not yet the observed value — current staging runs sit at 110 s and are still improving.",
-              "sources": [
-                "latency-audit-jun.pdf"
-              ]
-            },
-            "engineering": {
-              "mode": "expanded",
-              "body": "Remaining 110 s in staging is dominated by Flink checkpoint interval (30 s) plus warehouse micro-batch commit (60 s). Both are tunable; dropping the commit interval trades cost for latency roughly linearly."
-            }
-          }
+          "text": "42 min → 90 s",
+          "context": "Measured at p99 against the June baseline. The 90 s figure is the target, not yet the observed value — current staging runs sit at 110 s and are still improving.",
+          "sources": [
+            "latency-audit-jun.pdf"
+          ]
         },
         {
           "id": "s2h2",
+          "type": "text_box",
           "bbox": {
-            "x": 0.3625,
-            "y": 0.25778,
-            "w": 0.18726,
-            "h": 0.16222
+            "left": 0.3625,
+            "top": 0.25778,
+            "width": 0.18726,
+            "height": 0.16222
           },
-          "originalText": "9 eng-hrs / week",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "Time the team gets back every week once the old system is retired — roughly one full working day."
-            },
-            "product": {
-              "mode": "expanded",
-              "body": "Reclaimed on-call and manual-rerun toil, already committed to Q4 alerting. Worth stating as committed rather than available, or it will get spent twice.",
-              "sources": [
-                "q3-roadmap.pdf p.7"
-              ]
-            },
-            "engineering": {
-              "mode": "expanded",
-              "body": "Derived from the last two quarters of PagerDuty incidents tagged `pipeline-batch`: 6.2 h median response time plus 2.8 h of manual DAG reruns per week."
-            }
-          }
+          "text": "9 eng-hrs / week",
+          "context": "Reclaimed on-call and manual-rerun toil, already committed to Q4 alerting. Worth stating as committed rather than available, or it will get spent twice.",
+          "sources": [
+            "q3-roadmap.pdf p.7"
+          ]
         },
         {
           "id": "s2h3",
+          "type": "text_box",
           "bbox": {
-            "x": 0.6625,
-            "y": 0.25778,
-            "w": 0.28654,
-            "h": 0.16222
+            "left": 0.6625,
+            "top": 0.25778,
+            "width": 0.28654,
+            "height": 0.16222
           },
-          "originalText": "3 roadmap items unblocked",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "Three things we have promised customers become possible: live dashboards, alerts, and pay-for-what-you-use pricing."
-            },
-            "product": {
-              "mode": "expanded",
-              "body": "Live usage dashboards, in-product alerting, and usage-based billing. All three were gated on sub-minute data freshness; none can ship before this lands.",
-              "sources": [
-                "q3-roadmap.pdf p.2"
-              ]
-            },
-            "engineering": {
-              "mode": "expanded",
-              "body": "All three consume the same materialised view, so the ingest work is shared. Billing additionally requires exactly-once semantics, which is why the transactional sink is a hard requirement rather than a nice-to-have."
-            }
-          }
+          "text": "3 roadmap items unblocked",
+          "context": "Live usage dashboards, in-product alerting, and usage-based billing. All three were gated on sub-minute data freshness; none can ship before this lands.",
+          "sources": [
+            "q3-roadmap.pdf p.2"
+          ]
         },
         {
           "id": "s2h4",
+          "type": "text_box",
           "bbox": {
-            "x": 0.0625,
-            "y": 0.50222,
-            "w": 0.83105,
-            "h": 0.11111
+            "left": 0.0625,
+            "top": 0.50222,
+            "width": 0.83105,
+            "height": 0.11111
           },
-          "originalText": "Risk: dual-write doubles warehouse cost for the two-week cutover window. Finance has approved the overage.",
-          "kind": "text",
-          "variants": {
-            "marketing": {
-              "mode": "simplified",
-              "body": "Running both systems side by side costs extra for two weeks. It has been budgeted for, so it is not an open question."
-            },
-            "product": {
-              "mode": "expanded",
-              "body": "The main open risk on the plan. Approved at ~£18k for the window. If cutover slips past two weeks the overage needs re-approval, which is the trigger to escalate.",
-              "sources": [
-                "finance-approval-q3.pdf"
-              ]
-            },
-            "engineering": {
-              "mode": "expanded",
-              "body": "Doubled write volume, not doubled storage — the shadow tables are dropped on cutover. Watch warehouse slot contention during backfill; that is what will actually degrade query performance for everyone else."
-            }
-          }
+          "text": "Risk: dual-write doubles warehouse cost for the two-week cutover window. Finance has approved the overage.",
+          "context": "The main open risk on the plan. Approved at ~£18k for the window. If cutover slips past two weeks the overage needs re-approval, which is the trigger to escalate.",
+          "sources": [
+            "finance-approval-q3.pdf"
+          ]
         }
       ]
     }

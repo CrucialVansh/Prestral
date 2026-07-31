@@ -1,14 +1,17 @@
 import { Hotspot } from './Hotspot'
-import type { PersonaId, Slide } from '../types'
+import type { Audience, Slide } from '../types'
 
 interface Props {
   slide: Slide
   /** width / height, e.g. 1.7778 for 16:9 */
   aspectRatio: number
-  persona: PersonaId
+  persona: Audience
   highlightAll: boolean
   pinnedId: string | null
   onPin: (id: string | null) => void
+  onChatOpen?: (componentId: string) => void
+  onCloseChat?: () => void
+  chatComponentId?: string | null
 }
 
 /**
@@ -25,6 +28,9 @@ export function SlideCanvas({
   highlightAll,
   pinnedId,
   onPin,
+  onChatOpen,
+  onCloseChat,
+  chatComponentId,
 }: Props) {
   return (
     <div
@@ -45,25 +51,28 @@ export function SlideCanvas({
           silently misaligned hotspots. */}
       <img
         src={slide.imageUrl}
-        alt={slide.title ?? `Slide ${slide.index + 1}`}
+        alt={`Slide ${slide.index + 1}`}
         className="h-full w-full object-fill"
         draggable={false}
       />
 
-      {slide.hotspots.map((h) => (
+      {slide.components.map((h) => (
         <Hotspot
           key={h.id}
           hotspot={h}
           style={{
-            left: `${h.bbox.x * 100}%`,
-            top: `${h.bbox.y * 100}%`,
-            width: `${h.bbox.w * 100}%`,
-            height: `${h.bbox.h * 100}%`,
+            left: `${h.bbox.left * 100}%`,
+            top: `${h.bbox.top * 100}%`,
+            width: `${h.bbox.width * 100}%`,
+            height: `${h.bbox.height * 100}%`,
           }}
           persona={persona}
           highlighted={highlightAll}
           pinned={pinnedId === h.id}
           onPin={onPin}
+          onChatOpen={onChatOpen}
+          onClose={onCloseChat}
+          isChatOpen={chatComponentId === h.id}
         />
       ))}
     </div>

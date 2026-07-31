@@ -1,27 +1,27 @@
 import { useCallback, useEffect, useState } from 'react'
-import { PERSONAS, type PersonaId } from '../types'
+import { AUDIENCE_PRESETS, type Audience } from '../types'
 
-const KEY = 'prestral.persona'
+const KEY = 'prestral.audience'
 
-function initial(): PersonaId {
-  const saved = localStorage.getItem(KEY) as PersonaId | null
-  return saved && PERSONAS.some((p) => p.id === saved) ? saved : 'product'
+function initial(): Audience {
+  const saved = localStorage.getItem(KEY) as Audience | null
+  return saved && AUDIENCE_PRESETS.includes(saved as any) ? saved : 'swe'
 }
 
-/** Persona survives a reload, so a mid-demo refresh doesn't reset the view level. */
+/** Audience survives a reload, so a mid-demo refresh doesn't reset the view level. */
 export function usePersona() {
-  const [persona, setPersona] = useState<PersonaId>(initial)
+  const [persona, setPersona] = useState<Audience>(initial)
 
   useEffect(() => {
     localStorage.setItem(KEY, persona)
   }, [persona])
 
   const setByIndex = useCallback((i: number) => {
-    const next = PERSONAS[Math.max(0, Math.min(PERSONAS.length - 1, i))]
-    if (next) setPersona(next.id)
+    const next = AUDIENCE_PRESETS[Math.max(0, Math.min(AUDIENCE_PRESETS.length - 1, i))]
+    if (next) setPersona(next)
   }, [])
 
-  const index = PERSONAS.findIndex((p) => p.id === persona)
+  const index = AUDIENCE_PRESETS.findIndex((p) => p === persona)
 
   return { persona, setPersona, index, setByIndex }
 }

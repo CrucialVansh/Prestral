@@ -46,8 +46,8 @@ export default function Upload() {
     setBusy(true)
     setError(null)
     try {
-      const { deckId } = await uploadDeck(deckFile, contextFiles)
-      navigate(`/deck/${deckId}/processing`)
+      const { id } = await uploadDeck(deckFile, contextFiles)
+      navigate(`/deck/${id}/processing`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
       setBusy(false)
