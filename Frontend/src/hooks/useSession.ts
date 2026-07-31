@@ -30,14 +30,31 @@ export function useSession(
   const [error, setError] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Refs to avoid stale closures in async callbacks
+  const deckIdRef = useRef(deckId)
+  const componentIdRef = useRef(componentId)
+  const sessionRef = useRef(session)
+  const initialAudienceRef = useRef(initialAudience)
+  
+  // Update refs on every render
+  deckIdRef.current = deckId
+  componentIdRef.current = componentId
+  sessionRef.current = session
+  initialAudienceRef.current = initialAudience
 
   // Scroll to bottom of chat when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [session?.messages.length])
+  }, [session && session.messages ? session.messages.length : 0])
 
   const refresh = useCallback(async () => {
-    if (!deckId || !componentId) {
+    // Use refs for latest values
+    const currentDeckId = deckIdRef.current
+    const currentComponentId = componentIdRef.current
+    const currentAudience = initialAudienceRef.current
+    
+    if (!currentDeckId || !currentComponentId) {
       setSession(null)
       return
     }
@@ -47,18 +64,18 @@ export function useSession(
 
     try {
       // Try to find existing session for this component
-      const sessions = await listSessions(deckId)
-      const existing = sessions.find((s) => s.component_id === componentId)
+      const sessions = await listSessions(currentDeckId)
+      const existing = sessions.find((s) => s.component_id === currentComponentId)
 
       if (existing) {
         // Get full session with messages
-        const fullSession = await getSession(deckId, existing.id)
+        const fullSession = await getSession(currentDeckId, existing.id)
         setSession(fullSession)
       } else {
         // Create new session
-        const newSession = await createSession(deckId, {
-          component_id: componentId,
-          audience: initialAudience,
+        const newSession = await createSession(currentDeckId, {
+          component_id: currentComponentId,
+          audience: currentAudience,
         })
         setSession(newSession)
       }
@@ -68,16 +85,20 @@ export function useSession(
     } finally {
       setLoading(false)
     }
-  }, [deckId, componentId, initialAudience])
+  }, [])
 
   // Auto-refresh when deckId or componentId changes
   useEffect(() => {
     refresh()
-  }, [refresh])
+  }, [deckId, componentId, initialAudience])
 
   const sendMessage = useCallback(
     async (mode: QueryMode, content: string) => {
-      if (!deckId || !session) return
+      // Use refs for latest values
+      const currentDeckId = deckIdRef.current
+      const currentSession = sessionRef.current
+      
+      if (!currentDeckId || !currentSession) return
 
       setLoading(true)
       setError(null)
@@ -88,7 +109,7 @@ export function useSession(
           content,
         }
 
-        const updatedSession = await apiSendMessage(deckId, session.id, request)
+        const updatedSession = await apiSendMessage(currentDeckId, currentSession.id, request)
         setSession(updatedSession)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to send message')
@@ -96,18 +117,22 @@ export function useSession(
         setLoading(false)
       }
     },
-    [deckId, session],
+    [],
   )
 
   const setAudience = useCallback(
     async (audience: Audience) => {
-      if (!deckId || !session) return
+      // Use refs for latest values
+      const currentDeckId = deckIdRef.current
+      const currentSession = sessionRef.current
+      
+      if (!currentDeckId || !currentSession) return
 
       setLoading(true)
       setError(null)
 
       try {
-        const updatedSession = await updateSessionAudience(deckId, session.id, audience)
+        const updatedSession = await updateSessionAudience(currentDeckId, currentSession.id, audience)
         setSession(updatedSession)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to update audience')
@@ -115,22 +140,26 @@ export function useSession(
         setLoading(false)
       }
     },
-    [deckId, session],
+    [],
   )
 
   const closeSession = useCallback(async () => {
-    if (!deckId || !session) return
+    // Use refs for latest values
+    const currentDeckId = deckIdRef.current
+    const currentSession = sessionRef.current
+    
+    if (!currentDeckId || !currentSession) return
 
     setLoading(true)
     try {
-      await deleteSession(deckId, session.id)
+      await deleteSession(currentDeckId, currentSession.id)
       setSession(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to close session')
     } finally {
       setLoading(false)
     }
-  }, [deckId, session])
+  }, [])
 
   return {
     session,
