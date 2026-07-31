@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.models.schemas import HealthResponse
-from app.routers import decks, query
+from app.routers import decks, query, sessions
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,7 +22,7 @@ app = FastAPI(
     description=(
         "Upload a PPTX slide deck and a supporting DOCX/PDF document. "
         "The API scans slide components, relates them to the document via Mistral, "
-        "and exposes a Q&A endpoint for ask / summarize / explain."
+        "exposes single-shot Q&A, and multi-turn component chat sessions."
     ),
     version="0.1.0",
 )
@@ -37,6 +37,7 @@ app.add_middleware(
 
 app.include_router(decks.router)
 app.include_router(query.router)
+app.include_router(sessions.router)
 
 
 @app.get("/health", response_model=HealthResponse)

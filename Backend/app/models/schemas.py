@@ -102,5 +102,60 @@ class QueryResponse(BaseModel):
     mode: QueryMode
 
 
+class ChatRole(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class ChatMessage(BaseModel):
+    id: str
+    role: ChatRole
+    content: str
+    mode: Optional[QueryMode] = None
+    sources: list[SourceCitation] = Field(default_factory=list)
+    created_at: str
+
+
+class ChatSession(BaseModel):
+    """Multi-turn chat scoped to one deck component."""
+
+    id: str
+    deck_id: str
+    component_id: str
+    slide_index: int
+    title: str = ""
+    messages: list[ChatMessage] = Field(default_factory=list)
+    created_at: str
+    updated_at: str
+
+
+class ChatSessionSummary(BaseModel):
+    id: str
+    deck_id: str
+    component_id: str
+    slide_index: int
+    title: str
+    message_count: int
+    created_at: str
+    updated_at: str
+
+
+class CreateSessionRequest(BaseModel):
+    component_id: str
+    # If true, always create a new session even if one already exists for this component.
+    force_new: bool = False
+
+
+class SendMessageRequest(BaseModel):
+    content: str = ""
+    mode: QueryMode = QueryMode.ASK
+
+
+class SendMessageResponse(BaseModel):
+    session_id: str
+    user_message: ChatMessage
+    assistant_message: ChatMessage
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok"] = "ok"

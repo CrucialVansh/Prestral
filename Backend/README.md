@@ -32,7 +32,12 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | `POST` | `/api/decks/upload` | Upload slides + doc; returns full analysis |
 | `GET` | `/api/decks` | List processed decks (in-memory) |
 | `GET` | `/api/decks/{deck_id}` | Re-fetch a processed deck |
-| `POST` | `/api/decks/{deck_id}/query` | Ask / summarize / explain |
+| `POST` | `/api/decks/{deck_id}/query` | Single-shot ask / summarize / explain |
+| `POST` | `/api/decks/{deck_id}/sessions` | Get-or-create chat session for a `component_id` |
+| `GET` | `/api/decks/{deck_id}/sessions` | List sessions (switch between component chats) |
+| `GET` | `/api/decks/{deck_id}/sessions/{session_id}` | Fetch session + full message history |
+| `POST` | `/api/decks/{deck_id}/sessions/{session_id}/messages` | Send a multi-turn chat message |
+| `DELETE` | `/api/decks/{deck_id}/sessions/{session_id}` | Delete a session |
 
 ### Upload
 
@@ -95,6 +100,31 @@ curl -X POST http://localhost:8000/api/decks/<deck_id>/query \
     "mode": "explain",
     "component_id": "slide0-shape1"
   }'
+```
+
+### Component chat sessions
+
+Each session is linked to one `component_id`. Opening the same hotspot again returns the
+same session (unless you pass `"force_new": true`), so the UI can switch between sessions
+and resume history.
+
+```bash
+# Open (get-or-create) a session for a hotspot
+curl -s -X POST http://localhost:8000/api/decks/<deck_id>/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"component_id":"slide0-shape1"}'
+
+# List all sessions for the deck (for a session switcher UI)
+curl -s http://localhost:8000/api/decks/<deck_id>/sessions
+
+# Multi-turn message (history is kept server-side)
+curl -s -X POST http://localhost:8000/api/decks/<deck_id>/sessions/<session_id>/messages \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"ask","content":"What drove the revenue growth?"}'
+
+curl -s -X POST http://localhost:8000/api/decks/<deck_id>/sessions/<session_id>/messages \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"ask","content":"Can you expand on the enterprise upsell part?"}'
 ```
 
 ## Environment

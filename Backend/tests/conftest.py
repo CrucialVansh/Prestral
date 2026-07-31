@@ -59,14 +59,16 @@ def client(monkeypatch):
     get_settings.cache_clear()
     # Import after cache clear so startup Settings() sees current .env
     from app.main import app
-    from app.store import deck_store
+    from app.store import deck_store, session_store
     from fastapi.testclient import TestClient
 
-    # Reset in-memory store between tests
-    deck_store._decks.clear()
+    # Reset in-memory stores between tests
+    deck_store.clear()
+    session_store.clear()
 
     with TestClient(app) as c:
         yield c
 
-    deck_store._decks.clear()
+    deck_store.clear()
+    session_store.clear()
     get_settings.cache_clear()

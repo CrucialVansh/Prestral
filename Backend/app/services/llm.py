@@ -141,21 +141,69 @@ class LLMClient:
         anchor_text: str,
         retrieved_chunks: list[DocChunk],
     ) -> str:
+        return self.answer_chat(
+            mode=mode,
+            question=question,
+            anchor_text=anchor_text,
+            retrieved_chunks=retrieved_chunks,
+            history=[],
+        )
+
+    def answer_chat(
+        self,
+        *,
+        mode: str,
+        question: str,
+        anchor_text: str,
+        retrieved_chunks: list[DocChunk],
+        history: list[dict[str, str]],
+    ) -> str:
+        """
+        Multi-turn answer. `history` is prior [{role, content}, ...] excluding
+        the current user turn (passed as `question`).
+        """
         passages = "\n\n".join(
             f"[{ch.source}]\n{ch.text}" for ch in retrieved_chunks
         ) or "(no document passages retrieved)"
 
-        user_parts = []
-        if anchor_text:
-            user_parts.append(f"Focus / anchor context:\n{anchor_text}")
-        if question:
-            user_parts.append(f"User request:\n{question}")
-        user_parts.append(f"Supporting document passages:\n{passages}")
-
-        return self.chat(
-            [
-                {"role": "system", "content": _mode_system_prompt(mode)},
-                {"role": "user", "content": "\n\n".join(user_parts)},
-            ],
-            temperature=0.4,
+        system = (
+            _mode_system_prompt(mode)
+            + "\n\nYou are in a multi-turn chat about a specific slide component. "
+            "Stay focused on that component and the supporting document. "
+            "Use prior turns for continuity when the user refers to earlier answers."
         )
+
+        grounding = []
+        if anchor_text:
+            grounding.append(f"Focus / anchor context:\n{anchor_text}")
+        grounding.append(f"Supporting document passages:\n{passages}")
+
+        messages: list[dict[str, Any]] = [
+            {"role": "system", "content": system},
+            {
+                "role": "system",
+                "content": "Grounding materials for this turn:\n\n" + "\n\n".join(grounding),
+            },
+        ]
+
+        for turn in history:
+            role = turn.get("role", "user")
+            if role not in ("user", "assistant"):
+                continue
+            content = (turn.get("content") or "").strip()
+            if content:
+                messages.append({"role": role, "content": content})
+
+        user_content = question.strip() or (
+            "Please continue based on the mode and the focus component."
+            if mode != "ask"
+            else "Please answer based on the focus component and documents."
+        )
+        if mode == "summarize" and not question.strip():
+            user_content = "Summarize the focus component using the supporting document."
+        elif mode == "explain" and not question.strip():
+            user_content = "Explain the focus component in more depth using the supporting document."
+
+        messages.append({"role": "user", "content": user_content})
+
+        return self.chat(messages, temperature=0.4)
