@@ -1,16 +1,20 @@
 # Prestral
 
-AI-assisted slide exploration: upload a PPTX deck plus a deeper supporting document,
-and get per-component context for hoverable/clickable overlays plus Q&A.
+AI-assisted slide exploration: upload or import a PPTX plus supporting docs, get
+hoverable/clickable components, and audience-aware chat.
 
-## Backend
+## Backend (for frontend engineers)
 
-See [Backend/README.md](Backend/README.md) for setup and API docs.
+Full API guide, **API key setup**, and flows: **[Backend/README.md](Backend/README.md)**
+
+Interactive Swagger: run the server, then open http://localhost:8000/docs
 
 ```bash
 cd Backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # set MISTRAL_API_KEY
+cp .env.example .env
+# Required: MISTRAL_API_KEY from https://console.mistral.ai
+# Optional (Drive): GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET — see Backend/README.md
 uvicorn app.main:app --reload --port 8000
 ```

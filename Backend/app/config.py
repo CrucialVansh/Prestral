@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     chunk_overlap: int = 150
     top_k: int = 4
 
+    # Google Drive OAuth (optional — only required for cloud import)
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/api/storage/google/callback"
+    drive_max_auto_docs: int = 3
+    drive_preview_chars: int = 2500
+
 
 @lru_cache
 def get_settings() -> Settings:

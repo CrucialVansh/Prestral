@@ -8,7 +8,6 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 
 from app.models.schemas import BBox, Component, ComponentType, Slide
 
-
 _PLACEHOLDER_TITLE_TYPES = {
     PP_PLACEHOLDER.TITLE,
     PP_PLACEHOLDER.CENTER_TITLE,

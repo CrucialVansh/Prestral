@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from app.config import Settings
@@ -69,6 +70,68 @@ def _retrieve_for_slide(
     return results
 
 
+def _parse_docs(
+    docs: Sequence[tuple[bytes, str]],
+    settings: Settings,
+) -> tuple[list[DocChunk], list[str]]:
+    all_chunks: list[DocChunk] = []
+    names: list[str] = []
+    for doc_bytes, doc_filename in docs:
+        names.append(doc_filename)
+        chunks = parse_document(
+            doc_bytes,
+            doc_filename,
+            max_chars=settings.chunk_max_chars,
+            overlap=settings.chunk_overlap,
+        )
+        for chunk in chunks:
+            # Prefix so citations stay unique across multiple Drive docs.
+            chunk.source = f"{doc_filename}:{chunk.source}"
+        all_chunks.extend(chunks)
+        if not chunks:
+            logger.warning("Document produced zero chunks: %s", doc_filename)
+    return all_chunks, names
+
+
+def analyze_deck_multi(
+    *,
+    slides_bytes: bytes,
+    slides_filename: str,
+    docs: Sequence[tuple[bytes, str]],
+    settings: Settings,
+    source: str = "upload",
+) -> Deck:
+    """
+    Full pipeline over one PPTX and one-or-more grounding documents.
+    """
+    if not docs:
+        raise ValueError("At least one supporting document is required")
+
+    slides = parse_slides(slides_bytes)
+    chunks, doc_names = _parse_docs(docs, settings)
+
+    embeddings = EmbeddingsClient(settings)
+    llm = LLMClient(settings)
+
+    if chunks:
+        embeddings.embed_chunks(chunks)
+
+    for slide in slides:
+        retrieved = _retrieve_for_slide(slide, chunks, embeddings, settings.top_k)
+        analysis = llm.relate_slide_components(slide, retrieved)
+        _apply_component_contexts(slide.components, analysis)
+
+    return Deck(
+        id=str(uuid.uuid4()),
+        slides_filename=slides_filename,
+        doc_filename=", ".join(doc_names),
+        doc_filenames=list(doc_names),
+        slides=slides,
+        doc_chunks=chunks,
+        source=source,
+    )
+
+
 def analyze_deck(
     *,
     slides_bytes: bytes,
@@ -76,41 +139,13 @@ def analyze_deck(
     doc_bytes: bytes,
     doc_filename: str,
     settings: Settings,
+    source: str = "upload",
 ) -> Deck:
-    """
-    Full pipeline:
-      1. Parse slides into components with normalized bboxes
-      2. Parse + chunk the supporting document
-      3. Embed doc chunks
-      4. Per slide: retrieve relevant chunks, call LLM to relate each component
-      5. Return a Deck ready for storage / API response
-    """
-    slides = parse_slides(slides_bytes)
-    chunks = parse_document(
-        doc_bytes,
-        doc_filename,
-        max_chars=settings.chunk_max_chars,
-        overlap=settings.chunk_overlap,
-    )
-
-    embeddings = EmbeddingsClient(settings)
-    llm = LLMClient(settings)
-
-    if chunks:
-        embeddings.embed_chunks(chunks)
-    else:
-        logger.warning("Document produced zero chunks: %s", doc_filename)
-
-    for slide in slides:
-        retrieved = _retrieve_for_slide(slide, chunks, embeddings, settings.top_k)
-        analysis = llm.relate_slide_components(slide, retrieved)
-        _apply_component_contexts(slide.components, analysis)
-
-    deck = Deck(
-        id=str(uuid.uuid4()),
+    """Backward-compatible single-document analysis."""
+    return analyze_deck_multi(
+        slides_bytes=slides_bytes,
         slides_filename=slides_filename,
-        doc_filename=doc_filename,
-        slides=slides,
-        doc_chunks=chunks,
+        docs=[(doc_bytes, doc_filename)],
+        settings=settings,
+        source=source,
     )
-    return deck

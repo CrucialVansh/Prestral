@@ -1,14 +1,30 @@
 from __future__ import annotations
 
 import threading
-from typing import Optional
+from dataclasses import dataclass
 
 from app.models.schemas import (
     ChatSession,
     ChatSessionSummary,
     Deck,
     DeckSummary,
+    StorageConnection,
 )
+
+
+@dataclass
+class GoogleTokens:
+    access_token: str
+    refresh_token: str | None = None
+    token_type: str = "Bearer"
+    expires_in: int | None = None
+    email: str | None = None
+
+
+@dataclass
+class DriveConnectionRecord:
+    connection: StorageConnection
+    tokens: GoogleTokens
 
 
 class DeckStore:
@@ -22,7 +38,7 @@ class DeckStore:
         with self._lock:
             self._decks[deck.id] = deck
 
-    def get(self, deck_id: str) -> Optional[Deck]:
+    def get(self, deck_id: str) -> Deck | None:
         with self._lock:
             return self._decks.get(deck_id)
 
@@ -34,6 +50,7 @@ class DeckStore:
                     slides_filename=d.slides_filename,
                     doc_filename=d.doc_filename,
                     slide_count=len(d.slides),
+                    source=d.source,
                 )
                 for d in self._decks.values()
             ]
@@ -70,11 +87,11 @@ class SessionStore:
             if index_component:
                 self._by_component[(session.deck_id, session.component_id)] = session.id
 
-    def get(self, session_id: str) -> Optional[ChatSession]:
+    def get(self, session_id: str) -> ChatSession | None:
         with self._lock:
             return self._sessions.get(session_id)
 
-    def get_by_component(self, deck_id: str, component_id: str) -> Optional[ChatSession]:
+    def get_by_component(self, deck_id: str, component_id: str) -> ChatSession | None:
         with self._lock:
             sid = self._by_component.get((deck_id, component_id))
             if sid is None:
@@ -116,5 +133,54 @@ class SessionStore:
             self._by_component.clear()
 
 
+class ConnectionStore:
+    """In-memory Google Drive OAuth connections."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._connections: dict[str, DriveConnectionRecord] = {}
+        self._oauth_states: dict[str, bool] = {}
+
+    def put_state(self, state: str) -> None:
+        with self._lock:
+            self._oauth_states[state] = True
+
+    def consume_state(self, state: str) -> bool:
+        with self._lock:
+            return self._oauth_states.pop(state, False)
+
+    def put(self, record: DriveConnectionRecord) -> None:
+        with self._lock:
+            self._connections[record.connection.id] = record
+
+    def get(self, connection_id: str) -> DriveConnectionRecord | None:
+        with self._lock:
+            return self._connections.get(connection_id)
+
+    def list(self) -> list[StorageConnection]:
+        with self._lock:
+            return [r.connection for r in self._connections.values()]
+
+    def delete(self, connection_id: str) -> bool:
+        with self._lock:
+            if connection_id in self._connections:
+                del self._connections[connection_id]
+                return True
+            return False
+
+    def update_tokens(self, connection_id: str, tokens: GoogleTokens) -> None:
+        with self._lock:
+            record = self._connections.get(connection_id)
+            if record is None:
+                return
+            record.tokens = tokens
+
+    def clear(self) -> None:
+        with self._lock:
+            self._connections.clear()
+            self._oauth_states.clear()
+
+
 deck_store = DeckStore()
 session_store = SessionStore()
+connection_store = ConnectionStore()
