@@ -65,7 +65,15 @@ export function Hotspot({ hotspot, style, persona, highlighted, pinned, onPin }:
     // cursor travels diagonally across dead space from hotspot to card.
     handleClose: safePolygon({ blockPointerEvents: false }),
   })
-  const dismiss = useDismiss(context, { enabled: pinned })
+  const dismiss = useDismiss(context, {
+    enabled: pinned,
+    outsidePress: (event) => {
+      // Don't treat clicks on persona/highlight controls as a dismiss —
+      // switching view level shouldn't collapse a pinned card.
+      const target = event.target as HTMLElement
+      return !target.closest('[data-persona-control]')
+    },
+  })
   const role = useRole(context, { role: 'tooltip' })
 
   const { getReferenceProps, getFloatingProps } = useInteractions([hover, dismiss, role])

@@ -20,6 +20,7 @@ export function PersonaSlider({ index, onChange }: Props) {
       <div
         role="radiogroup"
         aria-label="View level"
+        data-persona-control
         className="relative flex rounded-full border border-white/10 bg-white/[0.04] p-1"
       >
         <div

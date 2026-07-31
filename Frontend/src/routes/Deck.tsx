@@ -99,6 +99,7 @@ export default function Deck() {
         <button
           onClick={() => setHighlightAll((v) => !v)}
           title="Outline every hotspot  (press h)"
+          data-persona-control
           className={[
             'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
             highlightAll
