@@ -35,6 +35,8 @@ cp .env.example .env
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+> **Note:** For slide rasterization (converting PPTX slides to images), LibreOffice must be installed and available in your PATH. On macOS: `brew install libreoffice`. On Linux: `sudo apt install libreoffice`. On Windows: download from [LibreOffice.org](https://www.libreoffice.org/). Additionally, PyMuPDF is required for multi-slide support: `pip install pymupdf`. If these are not available, slides will still be parsed but without images.
+
 Then open:
 
 - API: http://localhost:8000  

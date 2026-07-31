@@ -34,6 +34,7 @@ def _to_response(deck) -> DeckAnalysisResponse:
         slides=deck.slides,
         source=getattr(deck, "source", "upload"),
         selected_docs=[],
+        aspect_ratio=getattr(deck, "aspect_ratio", None),
     )
 
 

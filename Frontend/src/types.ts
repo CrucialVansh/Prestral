@@ -38,7 +38,7 @@ export interface Slide {
   index: number
   notes: string
   components: Component[]
-  imageUrl: string
+  imageUrl: string | null
   /** Not returned by the backend — derived client-side from the first TITLE component, if any. */
   title?: string
 }

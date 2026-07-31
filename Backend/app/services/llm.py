@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Any
 
 from mistralai.client import Mistral
@@ -10,6 +11,63 @@ from app.config import Settings
 from app.models.schemas import DocChunk, Slide
 
 logger = logging.getLogger(__name__)
+
+
+def _retry_with_backoff(func, max_retries: int = 5, base_delay: float = 1.0):
+    """
+    Retry a function with exponential backoff for rate limits (429) and temporary errors.
+    
+    The Mistral SDK raises SDKError (from httpx) which has a status_code attribute.
+    
+    Args:
+        func: Function to call (should take no arguments)
+        max_retries: Maximum number of retry attempts
+        base_delay: Initial delay in seconds (doubles each retry)
+    
+    Returns:
+        The result of func() if successful
+    
+    Raises:
+        Exception: The last exception if all retries fail
+    """
+    last_exception = None
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except Exception as e:
+            last_exception = e
+            # Check if it's a rate limit error (429)
+            if hasattr(e, 'status_code'):
+                if e.status_code == 429:
+                    delay = base_delay * (2 ** attempt)
+                    logger.warning(
+                        "Rate limited (429). Attempt %d/%d. Retrying in %.1fs...",
+                        attempt + 1, max_retries, delay
+                    )
+                    time.sleep(delay)
+                    continue
+                # For server errors (5xx), also retry
+                if 500 <= e.status_code < 600:
+                    delay = base_delay * (2 ** attempt)
+                    logger.warning(
+                        "Server error (%d). Attempt %d/%d. Retrying in %.1fs...",
+                        e.status_code, attempt + 1, max_retries, delay
+                    )
+                    time.sleep(delay)
+                    continue
+            # For connection errors or other transient errors, retry
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)
+                logger.warning(
+                    "Error: %s. Attempt %d/%d. Retrying in %.1fs...",
+                    str(e), attempt + 1, max_retries, delay
+                )
+                time.sleep(delay)
+                continue
+            # Non-retryable error or last attempt
+            raise
+    
+    raise last_exception
 
 
 ANALYSIS_SYSTEM_PROMPT = """You are an assistant that relates slide components to a supporting document.
@@ -136,20 +194,23 @@ class LLMClient:
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
-        res = self._client.chat.complete(**kwargs)
-        content = res.choices[0].message.content
-        if isinstance(content, list):
-            # Some SDK versions may return content parts.
-            parts = []
-            for part in content:
-                if isinstance(part, str):
-                    parts.append(part)
-                elif isinstance(part, dict) and "text" in part:
-                    parts.append(part["text"])
-                else:
-                    parts.append(str(part))
-            return "".join(parts)
-        return content or ""
+        # Use retry logic for rate limits and temporary errors
+        def _do_chat():
+            res = self._client.chat.complete(**kwargs)
+            content = res.choices[0].message.content
+            if isinstance(content, list):
+                parts = []
+                for part in content:
+                    if isinstance(part, str):
+                        parts.append(part)
+                    elif isinstance(part, dict) and "text" in part:
+                        parts.append(part["text"])
+                    else:
+                        parts.append(str(part))
+                return "".join(parts)
+            return content or ""
+        
+        return _retry_with_backoff(_do_chat, max_retries=5, base_delay=2.0)
 
     def relate_slide_components(
         self,
