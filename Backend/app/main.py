@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.models.schemas import HealthResponse
@@ -16,8 +20,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 
-# Fail fast if required config (e.g. MISTRAL_API_KEY) is missing.
-get_settings()
+settings = get_settings()
 
 API_DESCRIPTION = """
 ## Prestral API (frontend guide)
@@ -43,8 +46,8 @@ Or with Drive: ``GET /api/storage/google/auth-url`` → files → ``POST /api/st
 ### Important
 
 - Storage is **in-memory** — restarting the server clears decks, sessions, and Drive connections.
-- CORS is open for local frontend development.
-- Interactive docs: this page (Swagger) or ``/redoc``.
+- In production the built SPA is served from this same process (see ``STATIC_DIR``).
+- Interactive docs: ``/docs`` or ``/redoc``.
 """
 
 app = FastAPI(
@@ -78,7 +81,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -98,3 +101,36 @@ app.include_router(storage.router)
 async def health() -> HealthResponse:
     """Return ``{ \"status\": \"ok\" }`` when the API process is up."""
     return HealthResponse()
+
+
+def _resolve_static_dir() -> Path | None:
+    raw = os.environ.get("STATIC_DIR") or settings.static_dir
+    if not raw:
+        return None
+    path = Path(raw)
+    if path.is_dir() and (path / "index.html").is_file():
+        return path
+    return None
+
+
+_static_dir = _resolve_static_dir()
+if _static_dir is not None:
+    assets = _static_dir / "assets"
+    if assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets), name="assets")
+
+    mock = _static_dir / "mock"
+    if mock.is_dir():
+        app.mount("/mock", StaticFiles(directory=mock), name="mock")
+
+    @app.get("/")
+    async def spa_index() -> FileResponse:
+        return FileResponse(_static_dir / "index.html")
+
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str) -> FileResponse:
+        """Serve SPA for client-side routes; never shadow ``/api`` or ``/health``."""
+        candidate = _static_dir / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(_static_dir / "index.html")

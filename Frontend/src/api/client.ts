@@ -13,10 +13,13 @@ import type {
 /**
  * Mock is ON unless explicitly disabled, so a fresh clone runs with no backend.
  * Flip VITE_USE_MOCK=false in .env.local once pointed at a real server.
+ * Production Docker sets VITE_USE_MOCK=false and leaves VITE_API_TARGET empty
+ * so the SPA calls same-origin ``/api``.
  */
 export const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? 'true') !== 'false'
- 
-const API_BASE = import.meta.env.VITE_API_TARGET ?? 'http://localhost:8000'
+
+/** Empty = same-origin (production). Dev may set VITE_API_TARGET=http://localhost:8000. */
+const API_BASE = (import.meta.env.VITE_API_TARGET as string | undefined)?.replace(/\/$/, '') ?? ''
  
 const DEMO_ID = 'demo'
 const MOCK_PROCESSING_MS = 6000
