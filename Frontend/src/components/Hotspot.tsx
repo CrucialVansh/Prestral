@@ -50,11 +50,16 @@ export function Hotspot({ hotspot, style, persona, highlighted, pinned, onPin, o
       if (pinned) onPin(null)
     },
     placement: 'bottom-start',
+    strategy: 'fixed',
     middleware: [
       offset(10),
       // Cards near the slide edges would otherwise be clipped or run off-screen.
-      flip({ padding: 8 }),
-      shift({ padding: 8 }),
+      // Use generous padding to account for the 26rem (416px) popover width.
+      // flip: try opposite side if current placement would go off-screen
+      // shift: prevent going off-screen by shifting back
+      // The padding values are in pixels and define the minimum distance from viewport edges
+      flip({ padding: 64 }),
+      shift({ padding: 64 }),
     ],
     whileElementsMounted: autoUpdate,
   })
@@ -130,18 +135,21 @@ export function Hotspot({ hotspot, style, persona, highlighted, pinned, onPin, o
 
       {open && (
         // Portalled so the card is never clipped by the slide's bounding box.
+        // pointerEvents: none allows mouse-through to slide content below
         <FloatingPortal>
           <div
             ref={refs.setFloating}
-            style={{ ...floatingStyles, zIndex: 50 }}
+            style={{ ...floatingStyles, zIndex: 50, pointerEvents: 'none' }}
             {...getFloatingProps()}
           >
-            <DetailPopover
-              hotspot={hotspot}
-              persona={persona}
-              pinned={pinned}
-              onUnpin={() => onPin(null)}
-            />
+            <div style={{ pointerEvents: 'auto' }}>
+              <DetailPopover
+                hotspot={hotspot}
+                persona={persona}
+                pinned={pinned}
+                onUnpin={() => onPin(null)}
+              />
+            </div>
           </div>
         </FloatingPortal>
       )}

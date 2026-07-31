@@ -119,22 +119,13 @@ def analyze_deck_multi(
     if chunks:
         embeddings.embed_chunks(chunks)
 
-    # Add delay between slides to avoid rate limiting (Mistral has per-minute limits)
-    import time
-    for i, slide in enumerate(slides):
+    for slide in slides:
         slide_images = {
             c.id: images[c.id] for c in slide.components if c.id in images
         }
         retrieved = _retrieve_for_slide(slide, chunks, embeddings, settings.top_k)
         analysis = llm.relate_slide_components(slide, retrieved, images=slide_images)
         _apply_component_contexts(slide.components, analysis)
-        
-        # Delay between slides: 2 seconds for first 3 slides, 5 seconds after that
-        # This helps avoid hitting Mistral's rate limits
-        if i < len(slides) - 1:
-            delay = 5.0 if i >= 2 else 2.0
-            logger.info("Slide %d processed. Waiting %.1fs before next slide to avoid rate limits...", slide.index, delay)
-            time.sleep(delay)
 
     return Deck(
         id=str(uuid.uuid4()),
