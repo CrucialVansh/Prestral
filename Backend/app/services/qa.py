@@ -72,12 +72,16 @@ def answer_query(deck: Deck, request: QueryRequest, settings: Settings) -> Query
     retrieved = top_k_similar(query_vec, deck.doc_chunks, k=settings.top_k)
 
     llm = LLMClient(settings)
+    image_uri = None
+    if request.component_id:
+        image_uri = deck.component_images.get(request.component_id)
     answer = llm.answer_query(
         mode=request.mode.value,
         question=request.question,
         anchor_text=anchor,
         retrieved_chunks=retrieved,
         audience=request.audience,
+        image_data_uri=image_uri,
     )
 
     sources = [

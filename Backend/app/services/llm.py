@@ -18,16 +18,26 @@ The document is a deeper, more detailed version of the slide deck.
 Given a list of slide components (each with an id and text) and relevant document passages,
 return a JSON object mapping each component id to an object with:
   - "context": a concise explanation (2–5 sentences) of what this component means,
-    grounded in the document passages. If the document does not cover it, say so briefly.
+    grounded in the document passages (and any attached images for picture components).
+    If the document does not cover it, say so briefly.
   - "sources": a list of source labels (from the provided passages) that support the context.
 
-Only use the provided document passages. Do not invent facts.
+Some picture components may include an image in this request. Describe what the image shows
+when relevant, and relate it to the document. Ignore native charts/decorative shapes — only
+embedded pictures are provided as images.
+
+Only use the provided document passages and images. Do not invent facts.
 Respond with ONLY valid JSON of the form:
 {
   "<component_id>": {"context": "...", "sources": ["..."]},
   ...
 }
 """
+
+
+def _image_content_part(data_uri: str) -> dict[str, Any]:
+    """Mistral multimodal image part (data URI or URL)."""
+    return {"type": "image_url", "image_url": data_uri}
 
 _AUDIENCE_GUIDANCE: dict[str, str] = {
     "general": (
@@ -145,31 +155,56 @@ class LLMClient:
         self,
         slide: Slide,
         retrieved_chunks: list[DocChunk],
+        images: dict[str, str] | None = None,
     ) -> dict[str, dict[str, Any]]:
         """
         Call the LLM once per slide to produce per-component context.
-        Returns a dict keyed by component_id -> {context, sources}.
+
+        ``images`` maps component_id -> data URI for embedded PPTX pictures only.
         """
         if not slide.components:
             return {}
 
+        images = images or {}
         components_payload = [
-            {"id": c.id, "type": c.type.value, "text": c.text}
+            {
+                "id": c.id,
+                "type": c.type.value,
+                "text": c.text,
+                "has_image": c.id in images,
+            }
             for c in slide.components
         ]
         passages_payload = [
             {"source": ch.source, "text": ch.text} for ch in retrieved_chunks
         ]
 
-        user_content = json.dumps(
+        text_payload = json.dumps(
             {
                 "slide_index": slide.index,
                 "notes": slide.notes,
                 "components": components_payload,
                 "document_passages": passages_payload,
+                "image_note": (
+                    "Following images are labeled by component_id in order. "
+                    "Use them only for components with has_image=true."
+                ),
             },
             ensure_ascii=False,
         )
+
+        # Multimodal user content: text JSON + up to N picture data URIs.
+        user_parts: list[Any] = [{"type": "text", "text": text_payload}]
+        for comp in slide.components:
+            data_uri = images.get(comp.id)
+            if not data_uri:
+                continue
+            user_parts.append(
+                {"type": "text", "text": f"Image for component_id={comp.id}:"}
+            )
+            user_parts.append(_image_content_part(data_uri))
+
+        user_content: Any = user_parts if len(user_parts) > 1 else text_payload
 
         try:
             raw = self.chat(
@@ -197,6 +232,7 @@ class LLMClient:
         anchor_text: str,
         retrieved_chunks: list[DocChunk],
         audience: str = "general",
+        image_data_uri: str | None = None,
     ) -> str:
         return self.answer_chat(
             mode=mode,
@@ -205,6 +241,7 @@ class LLMClient:
             retrieved_chunks=retrieved_chunks,
             history=[],
             audience=audience,
+            image_data_uri=image_data_uri,
         )
 
     def answer_chat(
@@ -216,10 +253,14 @@ class LLMClient:
         retrieved_chunks: list[DocChunk],
         history: list[dict[str, str]],
         audience: str = "general",
+        image_data_uri: str | None = None,
     ) -> str:
         """
-        Multi-turn answer. `history` is prior [{role, content}, ...] excluding
-        the current user turn (passed as `question`).
+        Multi-turn answer. ``history`` is prior [{role, content}, ...] excluding
+        the current user turn (passed as ``question``).
+
+        When ``image_data_uri`` is set (embedded PPTX picture), it is attached to
+        the current user turn for multimodal reasoning.
         """
         passages = "\n\n".join(
             f"[{ch.source}]\n{ch.text}" for ch in retrieved_chunks
@@ -233,6 +274,11 @@ class LLMClient:
             "Stay focused on that component and the supporting document. "
             "Use prior turns for continuity when the user refers to earlier answers."
         )
+        if image_data_uri:
+            system += (
+                " An image of the focus component (embedded slide picture) is attached "
+                "to the latest user message — use it together with the document."
+            )
 
         grounding = []
         if anchor_text:
@@ -255,16 +301,27 @@ class LLMClient:
             if content:
                 messages.append({"role": role, "content": content})
 
-        user_content = question.strip() or (
+        user_text = question.strip() or (
             "Please continue based on the mode and the focus component."
             if mode != "ask"
             else "Please answer based on the focus component and documents."
         )
         if mode == "summarize" and not question.strip():
-            user_content = "Summarize the focus component using the supporting document."
+            user_text = "Summarize the focus component using the supporting document."
         elif mode == "explain" and not question.strip():
-            user_content = "Explain the focus component in more depth using the supporting document."
+            user_text = "Explain the focus component in more depth using the supporting document."
 
-        messages.append({"role": "user", "content": user_content})
+        if image_data_uri:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user_text},
+                        _image_content_part(image_data_uri),
+                    ],
+                }
+            )
+        else:
+            messages.append({"role": "user", "content": user_text})
 
         return self.chat(messages, temperature=0.4)

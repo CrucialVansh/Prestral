@@ -5,7 +5,8 @@ from app.services.slide_parser import parse_slides
 
 
 def test_parse_slides_extracts_components_and_notes(sample_pptx_bytes: bytes) -> None:
-    slides = parse_slides(sample_pptx_bytes)
+    parsed = parse_slides(sample_pptx_bytes)
+    slides = parsed.slides
 
     assert len(slides) == 2
     assert slides[0].index == 0
@@ -21,6 +22,9 @@ def test_parse_slides_extracts_components_and_notes(sample_pptx_bytes: bytes) ->
         assert 0.0 <= comp.bbox.width <= 1.0
         assert 0.0 <= comp.bbox.height <= 1.0
         assert comp.id.startswith("slide0-")
+        # Text-only sample deck has no embedded pictures
+        assert comp.has_image is False
+    assert parsed.images == {}
 
 
 def test_parse_docx_chunks(sample_docx_bytes: bytes) -> None:

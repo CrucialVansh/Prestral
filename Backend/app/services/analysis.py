@@ -107,7 +107,9 @@ def analyze_deck_multi(
     if not docs:
         raise ValueError("At least one supporting document is required")
 
-    slides = parse_slides(slides_bytes)
+    parsed = parse_slides(slides_bytes)
+    slides = parsed.slides
+    images = parsed.images
     chunks, doc_names = _parse_docs(docs, settings)
 
     embeddings = EmbeddingsClient(settings)
@@ -117,8 +119,11 @@ def analyze_deck_multi(
         embeddings.embed_chunks(chunks)
 
     for slide in slides:
+        slide_images = {
+            c.id: images[c.id] for c in slide.components if c.id in images
+        }
         retrieved = _retrieve_for_slide(slide, chunks, embeddings, settings.top_k)
-        analysis = llm.relate_slide_components(slide, retrieved)
+        analysis = llm.relate_slide_components(slide, retrieved, images=slide_images)
         _apply_component_contexts(slide.components, analysis)
 
     return Deck(
@@ -128,6 +133,7 @@ def analyze_deck_multi(
         doc_filenames=list(doc_names),
         slides=slides,
         doc_chunks=chunks,
+        component_images=images,
         source=source,
     )
 

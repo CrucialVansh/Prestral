@@ -24,9 +24,9 @@ class RankedDoc:
 
 
 def _slide_corpus_text(slides_bytes: bytes) -> str:
-    slides = parse_slides(slides_bytes)
+    parsed = parse_slides(slides_bytes)
     parts: list[str] = []
-    for slide in slides:
+    for slide in parsed.slides:
         if slide.notes:
             parts.append(slide.notes)
         for comp in slide.components:

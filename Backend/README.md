@@ -199,6 +199,9 @@ One shape on a slide:
 
 Keep the slide aspect ratio matching the PPTX so hotspots line up.
 
+### Pictures / infographics
+Embedded **images** (not native charts or decorative shapes) are extracted server-side as base64 data URIs, keyed by `component_id`. The API exposes `has_image: true` on those components so the UI can badge them; the base64 itself stays on the server and is sent only to `mistral-large-latest` during analysis/chat.
+
 ### Session
 One multi-turn chat tied to `(deck_id, component_id)`.
 

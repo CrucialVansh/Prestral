@@ -68,6 +68,13 @@ class Component(BaseModel):
         default_factory=list,
         description="Document source labels that support ``context``.",
     )
+    has_image: bool = Field(
+        False,
+        description=(
+            "True when this hotspot is an embedded PPTX picture and the server has "
+            "its image for multimodal LLM calls. Base64 is not sent to the client."
+        ),
+    )
 
 
 class Slide(BaseModel):
@@ -98,6 +105,9 @@ class Deck(BaseModel):
     doc_filenames: list[str] = Field(default_factory=list)
     slides: list[Slide] = Field(default_factory=list)
     doc_chunks: list[DocChunk] = Field(default_factory=list)
+    # Server-only: component_id -> data:<mime>;base64,... for embedded pictures.
+    # Never included in DeckAnalysisResponse.
+    component_images: dict[str, str] = Field(default_factory=dict, exclude=True)
     source: str = Field("upload", description="``upload`` or ``google_drive``.")
 
 

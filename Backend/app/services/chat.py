@@ -119,6 +119,7 @@ def send_message(
     ]
 
     llm = LLMClient(settings)
+    image_uri = deck.component_images.get(session.component_id)
     answer = llm.answer_chat(
         mode=body.mode.value,
         question=body.content,
@@ -126,6 +127,7 @@ def send_message(
         retrieved_chunks=retrieved,
         history=history,
         audience=audience,
+        image_data_uri=image_uri,
     )
 
     now = _utc_now()
