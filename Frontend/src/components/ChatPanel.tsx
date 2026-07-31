@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { AudienceSelector } from './AudienceSelector'
 import type { ChatMessage, Audience, QueryMode } from '../types'
+import { formatSourceLabels } from '../types'
 
 interface Props {
   messages: ChatMessage[]
@@ -115,7 +116,7 @@ export function ChatPanel({
                   {msg.sources && msg.sources.length > 0 && (
                     <p className="mt-1.5 border-t border-white/[0.1] pt-1.5 text-[10px] text-white/40">
                       <span className="text-white/30">Grounded in: </span>
-                      {msg.sources.join(' · ')}
+                      {formatSourceLabels(msg.sources)}
                     </p>
                   )}
                 </div>

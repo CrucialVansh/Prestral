@@ -39,13 +39,15 @@ export default function Deck({ mode = 'viewer' }: DeckProps) {
     loading: sessionLoading, 
     error: sessionError, 
     sendMessage,
+    setAudience,
   } = useSession(deckId, chatComponentId ?? undefined, sessionAudience)
   
   // Update global audience when session audience changes
   const handleSessionAudienceChange = useCallback(async (aud: Audience) => {
     setSessionAudience(aud)
     setGlobalPersona(aud)
-  }, [setGlobalPersona])
+    if (chatComponentId) await setAudience(aud)
+  }, [setGlobalPersona, chatComponentId, setAudience])
 
   const total = deck?.slides.length ?? 0
   const requested = Number(slideIndex)

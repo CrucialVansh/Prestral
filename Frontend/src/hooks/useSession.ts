@@ -34,7 +34,7 @@ export function useSession(
   // Scroll to bottom of chat when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [session?.messages.length])
+  }, [session?.messages?.length])
 
   const refresh = useCallback(async () => {
     if (!deckId || !componentId) {
@@ -68,11 +68,13 @@ export function useSession(
     } finally {
       setLoading(false)
     }
-  }, [deckId, componentId, initialAudience])
+    // initialAudience only used when creating a new session
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deckId, componentId])
 
   // Auto-refresh when deckId or componentId changes
   useEffect(() => {
-    refresh()
+    void refresh()
   }, [refresh])
 
   const sendMessage = useCallback(
@@ -88,8 +90,15 @@ export function useSession(
           content,
         }
 
-        const updatedSession = await apiSendMessage(deckId, session.id, request)
-        setSession(updatedSession)
+        const res = await apiSendMessage(deckId, session.id, request)
+        setSession((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            audience: (res.audience as Audience) || prev.audience,
+            messages: [...prev.messages, res.user_message, res.assistant_message],
+          }
+        })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to send message')
       } finally {
