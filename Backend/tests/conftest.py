@@ -5,7 +5,6 @@ from io import BytesIO
 import pytest
 from docx import Document
 from pptx import Presentation
-from pptx.util import Inches
 
 
 @pytest.fixture
@@ -59,16 +58,18 @@ def client(monkeypatch):
     get_settings.cache_clear()
     # Import after cache clear so startup Settings() sees current .env
     from app.main import app
-    from app.store import deck_store, session_store
+    from app.store import connection_store, deck_store, session_store
     from fastapi.testclient import TestClient
 
     # Reset in-memory stores between tests
     deck_store.clear()
     session_store.clear()
+    connection_store.clear()
 
     with TestClient(app) as c:
         yield c
 
     deck_store.clear()
     session_store.clear()
+    connection_store.clear()
     get_settings.cache_clear()

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from app.models.schemas import Component, ComponentType, BBox, Deck, Slide
-from app.models.schemas import CreateSessionRequest
+from app.models.schemas import BBox, Component, ComponentType, CreateSessionRequest, Deck, Slide
 from app.services.chat import get_or_create_session
 from app.store import deck_store, session_store
 
