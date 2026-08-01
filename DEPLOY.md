@@ -31,5 +31,5 @@ docker run --rm -p 8000:8000 -e MISTRAL_API_KEY=sk-... prestral
 |-------|--------|
 | Sleep | Free tier cold-starts after idle |
 | Memory | In-memory decks — sleep/redeploy clears data |
-| Slide PNGs | Needs LibreOffice for real rasters; without it, placeholders (keep image small on free tier) |
+| Slide PNGs | LibreOffice optional. Without it, Pillow compositor still builds slide PNGs from shapes (good enough for free deploy). |
 | Drive | Set `GOOGLE_*` + redirect `https://YOUR.onrender.com/api/storage/google/callback` |

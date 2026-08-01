@@ -12,7 +12,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 
 from app.models.schemas import BBox, Component, ComponentType, Slide
-from app.services.slide_rasterizer import rasterize_slides_pptx, TRANSPARENT_PNG
+from app.services.slide_rasterizer import rasterize_slides_pptx
 
 logger = logging.getLogger(__name__)
 
@@ -178,12 +178,13 @@ def parse_slides(file_bytes: bytes | BinaryIO, rasterize: bool = True) -> Parsed
     # Rasterize slides first (if requested)
     slide_image_urls: list[str] = []
     if rasterize:
-        try:
-            slide_image_urls = rasterize_slides_pptx(file_bytes)
-        except RuntimeError as exc:
-            logger.warning("Slide rasterization failed: %s. Using SVG placeholder images.", exc)
-            # Create SVG placeholder for each slide
-            slide_image_urls = [f"data:image/svg+xml;base64,{TRANSPARENT_PNG}" for _ in prs.slides]
+        slide_image_urls = rasterize_slides_pptx(file_bytes)
+        if slide_image_urls and slide_image_urls[0].startswith("data:image/svg"):
+            logger.warning(
+                "Slide images are SVG placeholders (install LibreOffice or Pillow for real PNGs)."
+            )
+        elif slide_image_urls:
+            logger.info("Rasterized %d slide image(s)", len(slide_image_urls))
 
     for slide_idx, slide in enumerate(prs.slides):
         components: list[Component] = []
