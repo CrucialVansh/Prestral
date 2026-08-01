@@ -1,8 +1,8 @@
-# Deploy Prestral (free)
+# Deploy Prestral (optional / cloud)
 
-**Branch base:** `frontend-vis` (presenter + viewer UI, merged backend).
+**Local development** lives on **`main`** — see the root [README.md](README.md).
 
-**Host:** [Render](https://render.com) free Web Service — one Docker container = React + FastAPI. **$0 hosting** (sleeps after ~15 min idle). You still pay Mistral for API usage.
+This file is for hosting a public demo. **Host:** [Render](https://render.com) free Web Service — one Docker container = React + FastAPI. **$0 hosting** (sleeps after ~15 min idle). You still pay Mistral for API usage.
 
 ## Deploy
 

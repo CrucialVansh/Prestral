@@ -1,37 +1,55 @@
-#!/bin/bash
-# Bash script to start both backend and frontend
-# Run this from the Prestral directory using Git Bash or WSL
+#!/usr/bin/env bash
+# Start backend + frontend for local development (macOS / Linux).
+# Prefer two terminals if you want clearer logs — see README.md.
 
-echo "Setting up environment..."
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
 
-# Create frontend .env.local with real backend settings
-cat > Frontend/.env.local << 'EOF'
+if [[ ! -f Backend/.env ]]; then
+  echo "Missing Backend/.env — copy Backend/.env.example and set MISTRAL_API_KEY"
+  exit 1
+fi
+
+mkdir -p Frontend
+cat > Frontend/.env.local <<'EOF'
 VITE_USE_MOCK=false
 VITE_API_TARGET=http://localhost:8000
 EOF
 
-echo "Starting backend server on port 8000..."
-cd Backend
-.venv/Scripts/activate
-uvicorn app.main:app --reload --port 8000 &
+cleanup() {
+  [[ -n "${BACKEND_PID:-}" ]] && kill "$BACKEND_PID" 2>/dev/null || true
+  [[ -n "${FRONTEND_PID:-}" ]] && kill "$FRONTEND_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+echo "Starting backend on :8000..."
+(
+  cd Backend
+  # shellcheck disable=SC1091
+  if [[ -f .venv/bin/activate ]]; then
+    source .venv/bin/activate
+  elif [[ -f .venv/Scripts/activate ]]; then
+    source .venv/Scripts/activate
+  else
+    echo "No Backend/.venv — create it: python -m venv .venv && pip install -r requirements.txt"
+    exit 1
+  fi
+  exec uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+) &
 BACKEND_PID=$!
 
-cd ..
-
-echo "Starting frontend server on port 5173..."
-cd Frontend
-npm run dev &
+echo "Starting frontend on :5173..."
+(
+  cd Frontend
+  [[ -d node_modules ]] || npm install
+  exec npm run dev -- --host 127.0.0.1 --port 5173
+) &
 FRONTEND_PID=$!
 
-cd ..
-
 echo ""
-echo "Both servers are now running:"
-echo "  Backend: http://localhost:8000 (PID: $BACKEND_PID)"
-echo "  Frontend: http://localhost:5173 (PID: $FRONTEND_PID)"
+echo "  Backend:  http://localhost:8000  (docs: /docs)"
+echo "  Frontend: http://localhost:5173"
+echo "  Ctrl+C to stop"
 echo ""
-echo "Press Ctrl+C to stop both servers"
-echo ""
-
-# Wait for both processes
-wait $BACKEND_PID $FRONTEND_PID
+wait
