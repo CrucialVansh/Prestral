@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import random
+import string
 import uuid
 from collections.abc import Sequence
 from typing import Any
@@ -13,6 +15,12 @@ from app.services.llm import LLMClient
 from app.services.slide_parser import parse_slides
 
 logger = logging.getLogger(__name__)
+
+
+def generate_session_code(length: int = 6) -> str:
+    """Generate a random session code using numbers and capital letters."""
+    characters = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
 
 
 def _apply_component_contexts(
@@ -110,6 +118,7 @@ def analyze_deck_multi(
     parsed = parse_slides(slides_bytes)
     slides = parsed.slides
     images = parsed.images
+    aspect_ratio = parsed.aspect_ratio
     chunks, doc_names = _parse_docs(docs, settings)
 
     embeddings = EmbeddingsClient(settings)
@@ -127,7 +136,7 @@ def analyze_deck_multi(
         _apply_component_contexts(slide.components, analysis)
 
     return Deck(
-        id=str(uuid.uuid4()),
+        id=generate_session_code(),
         slides_filename=slides_filename,
         doc_filename=", ".join(doc_names),
         doc_filenames=list(doc_names),
@@ -135,6 +144,7 @@ def analyze_deck_multi(
         doc_chunks=chunks,
         component_images=images,
         source=source,
+        aspect_ratio=aspect_ratio,
     )
 
 

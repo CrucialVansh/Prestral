@@ -1,0 +1,182 @@
+{
+  "id": "demo",
+  "slides_filename": "Ingest Pipeline Migration — Q3 Platform Review",
+  "source": "local",
+  "doc_filenames": [
+    "q3-roadmap.pdf",
+    "arch-decision-014.md",
+    "latency-audit-jun.pdf",
+    "finance-approval-q3.pdf"
+  ],
+  "aspectRatio": 1.7778,
+  "slides": [
+    {
+      "index": 0,
+      "imageUrl": "/mock/slide-0.png",
+      "notes": "",
+      "components": [
+        {
+          "id": "s0h1",
+          "type": "title",
+          "bbox": {
+            "left": 0.0625,
+            "top": 0.22444,
+            "width": 0.70643,
+            "height": 0.14
+          },
+          "text": "Ingest Pipeline Migration",
+          "context": "Replaces the nightly batch load with a continuous stream. Unblocks three roadmap items that were gated on fresh data: live usage dashboards, alerting, and usage-based billing. Scope is ingest only — the warehouse schema is unchanged.",
+          "sources": [
+            "q3-roadmap.pdf p.2",
+            "arch-decision-014.md"
+          ]
+        },
+        {
+          "id": "s0h2",
+          "type": "text_box",
+          "bbox": {
+            "left": 0.0625,
+            "top": 0.76889,
+            "width": 0.64286,
+            "height": 0.05778
+          },
+          "text": "Hover any highlighted text. The explanation rewrites itself for your discipline.",
+          "context": "One artefact instead of three. The deck stops being a lowest-common-denominator document that under-serves every room it enters.",
+          "sources": []
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "imageUrl": "/mock/slide-1.png",
+      "notes": "",
+      "components": [
+        {
+          "id": "s1h1",
+          "type": "text_box",
+          "bbox": {
+            "left": 0.0625,
+            "top": 0.23556,
+            "width": 0.68102,
+            "height": 0.07111
+          },
+          "text": "Replace nightly batch ETL with event-driven CDC over Kafka",
+          "context": "Removes the up-to-24-hour staleness window that drives most 'why is my number wrong?' support tickets. Cost: an always-on streaming service to operate, versus a job that only ran at 2am.",
+          "sources": [
+            "arch-decision-014.md"
+          ]
+        },
+        {
+          "id": "s1h2",
+          "type": "text_box",
+          "bbox": {
+            "left": 0.0625,
+            "top": 0.34667,
+            "width": 0.56491,
+            "height": 0.07111
+          },
+          "text": "Cut p99 ingest latency from 42 min to under 90 s",
+          "context": "The 90-second target is what makes in-product alerting viable — below the threshold where a user would rather check the source system directly. We measured 42 min at p99 over the last quarter.",
+          "sources": [
+            "latency-audit-jun.pdf"
+          ]
+        },
+        {
+          "id": "s1h3",
+          "type": "text_box",
+          "bbox": {
+            "left": 0.0625,
+            "top": 0.45778,
+            "width": 0.64016,
+            "height": 0.07111
+          },
+          "text": "Backfill via idempotent replay; dual-write during cutover",
+          "context": "This is the de-risking step. Dual-write means we can abort the migration at any point and fall back to the old pipeline with no data loss — worth the extra two weeks of engineering time.",
+          "sources": []
+        },
+        {
+          "id": "s1h4",
+          "type": "text_box",
+          "bbox": {
+            "left": 0.0625,
+            "top": 0.56889,
+            "width": 0.69903,
+            "height": 0.07111
+          },
+          "text": "Retire the nightly cron and deprecate the legacy Airflow DAGs",
+          "context": "Removes roughly 9 engineer-hours a week of on-call toil. That capacity is already allocated to the Q4 alerting work, so the saving is real rather than notional.",
+          "sources": [
+            "q3-roadmap.pdf p.7"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "imageUrl": "/mock/slide-2.png",
+      "notes": "",
+      "components": [
+        {
+          "id": "s2h1",
+          "type": "text_box",
+          "bbox": {
+            "left": 0.0625,
+            "top": 0.25778,
+            "width": 0.23402,
+            "height": 0.09
+          },
+          "text": "42 min → 90 s",
+          "context": "Measured at p99 against the June baseline. The 90 s figure is the target, not yet the observed value — current staging runs sit at 110 s and are still improving.",
+          "sources": [
+            "latency-audit-jun.pdf"
+          ]
+        },
+        {
+          "id": "s2h2",
+          "type": "text_box",
+          "bbox": {
+            "left": 0.3625,
+            "top": 0.25778,
+            "width": 0.18726,
+            "height": 0.16222
+          },
+          "text": "9 eng-hrs / week",
+          "context": "Reclaimed on-call and manual-rerun toil, already committed to Q4 alerting. Worth stating as committed rather than available, or it will get spent twice.",
+          "sources": [
+            "q3-roadmap.pdf p.7"
+          ]
+        },
+        {
+          "id": "s2h3",
+          "type": "text_box",
+          "bbox": {
+            "left": 0.6625,
+            "top": 0.25778,
+            "width": 0.28654,
+            "height": 0.16222
+          },
+          "text": "3 roadmap items unblocked",
+          "context": "Live usage dashboards, in-product alerting, and usage-based billing. All three were gated on sub-minute data freshness; none can ship before this lands.",
+          "sources": [
+            "q3-roadmap.pdf p.2"
+          ]
+        },
+        {
+          "id": "s2h4",
+          "type": "text_box",
+          "bbox": {
+            "left": 0.0625,
+            "top": 0.50222,
+            "width": 0.83105,
+            "height": 0.11111
+          },
+          "text": "Risk: dual-write doubles warehouse cost for the two-week cutover window. Finance has approved the overage.",
+          "context": "The main open risk on the plan. Approved at ~£18k for the window. If cutover slips past two weeks the overage needs re-approval, which is the trigger to escalate.",
+          "sources": [
+            "finance-approval-q3.pdf"
+          ]
+        }
+      ]
+    }
+  ]
+}

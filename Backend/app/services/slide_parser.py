@@ -12,6 +12,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 
 from app.models.schemas import BBox, Component, ComponentType, Slide
+from app.services.slide_rasterizer import rasterize_slides_pptx
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,8 @@ class ParsedPresentation:
 
     slides: list[Slide]
     images: dict[str, str] = field(default_factory=dict)
+    slide_images: list[str] = field(default_factory=list)
+    aspect_ratio: float | None = None
 
 
 def _normalize_bbox(shape, slide_width: int, slide_height: int) -> BBox:
@@ -146,20 +149,42 @@ def _extract_notes(slide) -> str:
     return ""
 
 
-def parse_slides(file_bytes: bytes | BinaryIO) -> ParsedPresentation:
+def parse_slides(file_bytes: bytes | BinaryIO, rasterize: bool = True) -> ParsedPresentation:
     """
     Parse a PPTX into slides/components and extract embedded picture data URIs.
 
     Vision / multimodal uses **only** ``MSO_SHAPE_TYPE.PICTURE`` blobs — not charts
     or decorative native shapes. Text/table components are still returned for hotspots.
+
+    Args:
+        file_bytes: The PPTX file content
+        rasterize: If True, attempt to rasterize each slide to a PNG image.
+                   Falls back gracefully if LibreOffice is not available.
+
+    Returns:
+        ParsedPresentation with slides, component images, slide images, and aspect ratio.
     """
     stream = BytesIO(file_bytes) if isinstance(file_bytes, (bytes, bytearray)) else file_bytes
     prs = Presentation(stream)
     slide_width = int(prs.slide_width)
     slide_height = int(prs.slide_height)
 
+    # Calculate aspect ratio (width / height)
+    aspect_ratio = slide_width / slide_height if slide_height > 0 else None
+
     slides: list[Slide] = []
     images: dict[str, str] = {}
+
+    # Rasterize slides first (if requested)
+    slide_image_urls: list[str] = []
+    if rasterize:
+        slide_image_urls = rasterize_slides_pptx(file_bytes)
+        if slide_image_urls and slide_image_urls[0].startswith("data:image/svg"):
+            logger.warning(
+                "Slide images are SVG placeholders (install LibreOffice or Pillow for real PNGs)."
+            )
+        elif slide_image_urls:
+            logger.info("Rasterized %d slide image(s)", len(slide_image_urls))
 
     for slide_idx, slide in enumerate(prs.slides):
         components: list[Component] = []
@@ -199,12 +224,21 @@ def parse_slides(file_bytes: bytes | BinaryIO) -> ParsedPresentation:
                 )
             )
 
+        # Get the slide image URL (uses placeholder if rasterization failed)
+        slide_image_url = slide_image_urls[slide_idx] if slide_idx < len(slide_image_urls) else None
+
         slides.append(
             Slide(
                 index=slide_idx,
                 notes=_extract_notes(slide),
                 components=components,
+                image_url=slide_image_url,
             )
         )
 
-    return ParsedPresentation(slides=slides, images=images)
+    return ParsedPresentation(
+        slides=slides,
+        images=images,
+        slide_images=slide_image_urls,
+        aspect_ratio=aspect_ratio,
+    )

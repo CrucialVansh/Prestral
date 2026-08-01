@@ -10,7 +10,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ComponentType(StrEnum):
@@ -80,11 +80,18 @@ class Component(BaseModel):
 class Slide(BaseModel):
     """One slide and its interactive components."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     index: int = Field(..., ge=0, description="Zero-based slide index.")
     notes: str = Field("", description="Speaker notes (not a hotspot; useful as side-panel context).")
     components: list[Component] = Field(
         default_factory=list,
         description="Hotspots to overlay on this slide.",
+    )
+    image_url: str | None = Field(
+        None,
+        alias="imageUrl",
+        description="Data URI of the rasterized slide image (PNG). Null if rasterization failed or is unavailable.",
     )
 
 
@@ -99,6 +106,8 @@ class DocChunk(BaseModel):
 class Deck(BaseModel):
     """Full in-memory representation of a processed deck (server-side)."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     slides_filename: str
     doc_filename: str
@@ -109,6 +118,11 @@ class Deck(BaseModel):
     # Never included in DeckAnalysisResponse.
     component_images: dict[str, str] = Field(default_factory=dict, exclude=True)
     source: str = Field("upload", description="``upload`` or ``google_drive``.")
+    aspect_ratio: float | None = Field(
+        None,
+        alias="aspectRatio",
+        description="Slide aspect ratio (width / height). Derived from the PPTX slide size.",
+    )
 
 
 class DeckSummary(BaseModel):
@@ -146,6 +160,8 @@ class DeckAnalysisResponse(BaseModel):
     ``context`` → click opens a session with ``component.id``.
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str = Field(..., description="Deck id for query/sessions/get.")
     slides_filename: str
     doc_filename: str = Field(..., description="Human-readable doc label (may list several).")
@@ -158,6 +174,11 @@ class DeckAnalysisResponse(BaseModel):
     selected_docs: list[DriveFileInfo] = Field(
         default_factory=list,
         description="Drive docs chosen during import (empty for local upload).",
+    )
+    aspect_ratio: float | None = Field(
+        None,
+        alias="aspectRatio",
+        description="Slide aspect ratio (width / height). Derived from the PPTX slide size.",
     )
 
 

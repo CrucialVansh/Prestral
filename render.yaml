@@ -1,0 +1,24 @@
+# Free-tier single Web Service (API + SPA) — base branch: frontend-vis
+# Dashboard: https://dashboard.render.com → New → Blueprint
+
+services:
+  - type: web
+    name: prestral
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: MISTRAL_CHAT_MODEL
+        value: mistral-large-latest
+      - key: MISTRAL_EMBED_MODEL
+        value: mistral-embed
+      - key: STATIC_DIR
+        value: /app/static
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
