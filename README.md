@@ -1,3 +1,6 @@
+# 1st place in The Atlassian X Mistral X AISoc Hack 
+source: https://aisoc-atlassian-mistral.devpost.com/project-gallery
+
 # Prestral
 
 Upload a PowerPoint deck plus a supporting document. Hover any region for

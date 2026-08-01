@@ -79,7 +79,6 @@ def update_session(session: ChatSession, body: UpdateSessionRequest) -> ChatSess
         session_store.put(session, index_component=True)
     return session
 
-# sends a 
 def send_message(
     deck: Deck,
     session: ChatSession,
