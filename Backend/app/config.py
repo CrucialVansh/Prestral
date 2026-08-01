@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     drive_max_auto_docs: int = 3
     drive_preview_chars: int = 2500
 
+    # Production: directory with Vite ``dist`` (index.html + assets). Empty = API only.
+    static_dir: str = ""
+
+    # Optional LibreOffice for slide PNGs (see slide_rasterizer).
+    libreoffice_path: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

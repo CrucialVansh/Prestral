@@ -100,10 +100,15 @@ export interface QueryResponse {
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
-  sources?: string[]
+  sources?: SourceCitation[] | string[]
   created_at: string
 }
- 
+
+export interface SourceCitation {
+  text: string
+  source: string
+}
+
 export interface Session {
   id: string
   deck_id: string
@@ -111,17 +116,33 @@ export interface Session {
   audience: Audience
   messages: ChatMessage[]
 }
- 
+
 export interface CreateSessionRequest {
   component_id: string
   audience?: Audience
   force_new?: boolean
 }
- 
+
 export interface SendMessageRequest {
   mode: QueryMode
   /** Required for mode === 'ask'; may be empty for summarize/explain. */
   content: string
+}
+
+export interface SendMessageResponse {
+  session_id: string
+  user_message: ChatMessage
+  assistant_message: ChatMessage
+  audience: string
+}
+
+/** Normalize mixed source shapes for display. */
+export function formatSourceLabels(sources?: SourceCitation[] | string[] | null): string {
+  if (!sources?.length) return ''
+  return sources
+    .map((s) => (typeof s === 'string' ? s : s.source))
+    .filter(Boolean)
+    .join(' · ')
 }
  
 // ---------- Google Drive storage ----------

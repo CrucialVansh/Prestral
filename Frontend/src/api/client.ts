@@ -5,6 +5,7 @@ import type {
   QueryResponse,
   CreateSessionRequest,
   SendMessageRequest,
+  SendMessageResponse,
   DriveFileList,
   DriveImportRequest,
   ComponentType,
@@ -13,10 +14,13 @@ import type {
 /**
  * Mock is ON unless explicitly disabled, so a fresh clone runs with no backend.
  * Flip VITE_USE_MOCK=false in .env.local once pointed at a real server.
+ * Production Docker sets VITE_USE_MOCK=false and leaves VITE_API_TARGET empty
+ * so the SPA calls same-origin ``/api``.
  */
 export const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? 'true') !== 'false'
- 
-const API_BASE = import.meta.env.VITE_API_TARGET ?? 'http://localhost:8000'
+
+/** Empty = same-origin (production). Dev may set VITE_API_TARGET=http://localhost:8000. */
+const API_BASE = (import.meta.env.VITE_API_TARGET as string | undefined)?.replace(/\/$/, '') ?? ''
  
 const DEMO_ID = 'demo'
 const MOCK_PROCESSING_MS = 6000
@@ -143,20 +147,31 @@ export async function sendMessage(
   deckId: string,
   sessionId: string,
   req: SendMessageRequest,
-): Promise<Session> {
+): Promise<SendMessageResponse> {
   if (USE_MOCK) {
     const s = mockSessions.get(sessionId)
     if (!s) throw new Error('Session not found')
-    if (req.content) s.messages.push({ role: 'user', content: req.content, created_at: new Date().toISOString() })
-    s.messages.push({
-      role: 'assistant',
+    const now = new Date().toISOString()
+    const user_message = {
+      role: 'user' as const,
+      content: req.content || (req.mode === 'summarize' ? 'Summarize' : 'Explain'),
+      created_at: now,
+    }
+    const assistant_message = {
+      role: 'assistant' as const,
       content: `Mock reply (${req.mode}) for audience="${s.audience}".`,
-      sources: [],
-      created_at: new Date().toISOString(),
-    })
-    return s
+      sources: [] as { text: string; source: string }[],
+      created_at: now,
+    }
+    s.messages.push(user_message, assistant_message)
+    return {
+      session_id: sessionId,
+      user_message,
+      assistant_message,
+      audience: String(s.audience),
+    }
   }
-  return json<Session>(
+  return json<SendMessageResponse>(
     await fetch(`${API_BASE}/api/decks/${deckId}/sessions/${sessionId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

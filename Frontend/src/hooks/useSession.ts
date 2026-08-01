@@ -85,12 +85,14 @@ export function useSession(
     } finally {
       setLoading(false)
     }
-  }, [])
+    // initialAudience only used when creating a new session
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deckId, componentId])
 
   // Auto-refresh when deckId or componentId changes
   useEffect(() => {
-    refresh()
-  }, [deckId, componentId, initialAudience])
+    void refresh()
+  }, [refresh])
 
   const sendMessage = useCallback(
     async (mode: QueryMode, content: string) => {
@@ -109,8 +111,15 @@ export function useSession(
           content,
         }
 
-        const updatedSession = await apiSendMessage(currentDeckId, currentSession.id, request)
-        setSession(updatedSession)
+        const res = await apiSendMessage(currentDeckId, currentSession.id, request)
+        setSession((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            audience: (res.audience as Audience) || prev.audience,
+            messages: [...prev.messages, res.user_message, res.assistant_message],
+          }
+        })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to send message')
       } finally {
