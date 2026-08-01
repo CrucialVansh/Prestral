@@ -38,8 +38,12 @@ export function DetailPopover({ hotspot, persona, pinned, onUnpin }: Props) {
     return aud.toString().charAt(0).toUpperCase() + aud.toString().slice(1)
   }
 
-  // A component without context should degrade gracefully
-  if (!hotspot.context) return null
+  // A component without contexts should degrade gracefully
+  if (!hotspot.contexts || Object.keys(hotspot.contexts).length === 0) return null
+
+  // Get the context for the currently selected audience, fall back to general
+  const context = hotspot.contexts[shownPersona] || hotspot.contexts['general'] || ''
+  if (!context) return null
 
   return (
     <div
@@ -69,7 +73,7 @@ export function DetailPopover({ hotspot, persona, pinned, onUnpin }: Props) {
         className="transition-opacity duration-[180ms]"
         style={{ opacity: fading ? 0 : 1 }}
       >
-        <p className="text-[13.5px] leading-relaxed text-white/85">{hotspot.context}</p>
+        <p className="text-[13.5px] leading-relaxed text-white/85">{context}</p>
 
         {/* Provenance is the difference between "the AI paraphrased this slide"
             and "the AI grounded this in our documents". Always show it if present. */}

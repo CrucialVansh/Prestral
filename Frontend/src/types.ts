@@ -29,8 +29,8 @@ export interface Component {
   type: ComponentType
   bbox: BBox
   text: string
-  /** Pre-computed at upload time — the default hover explanation. No extra call needed. */
-  context: string | null
+  /** Pre-computed at upload time — hover explanations per audience. No extra call needed. */
+  contexts: Record<string, string>
   sources: string[]
 }
  
@@ -64,20 +64,14 @@ export type AudiencePreset =
   | 'swe'
   | 'marketing'
   | 'executive'
-  | 'sales'
-  | 'student'
   | 'designer'
-  | 'finance'
  
 export const AUDIENCE_PRESETS: AudiencePreset[] = [
   'general',
   'swe',
   'marketing',
   'executive',
-  'sales',
-  'student',
   'designer',
-  'finance',
 ]
  
 /** A preset, or any free-text role string (e.g. "junior PM at a B2B SaaS startup"). */

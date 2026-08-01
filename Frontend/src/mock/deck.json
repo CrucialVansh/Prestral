@@ -25,7 +25,13 @@
             "height": 0.14
           },
           "text": "Ingest Pipeline Migration",
-          "context": "Replaces the nightly batch load with a continuous stream. Unblocks three roadmap items that were gated on fresh data: live usage dashboards, alerting, and usage-based billing. Scope is ingest only — the warehouse schema is unchanged.",
+          "contexts": {
+            "general": "Replaces the nightly batch load with a continuous stream. Unblocks three roadmap items that were gated on fresh data: live usage dashboards, alerting, and usage-based billing. Scope is ingest only — the warehouse schema is unchanged.",
+            "swe": "Technical implementation: CDC over Kafka replaces batch ETL. Enables real-time data processing with sub-minute latency. Schema remains unchanged for backward compatibility.",
+            "marketing": "Enables real-time features like live dashboards and usage-based billing. Improves customer experience by providing up-to-date data. Competitive advantage through faster insights.",
+            "executive": "Reduces data staleness from 24 hours to under 90 seconds. Unblocks three strategic roadmap items. Approved budget for dual-write during cutover.",
+            "designer": "User impact: Faster, more accurate data visualizations. Enables real-time dashboards that update as events occur rather than on a schedule."
+          },
           "sources": [
             "q3-roadmap.pdf p.2",
             "arch-decision-014.md"
@@ -41,7 +47,13 @@
             "height": 0.05778
           },
           "text": "Hover any highlighted text. The explanation rewrites itself for your discipline.",
-          "context": "One artefact instead of three. The deck stops being a lowest-common-denominator document that under-serves every room it enters.",
+          "contexts": {
+            "general": "One artefact instead of three. The deck stops being a lowest-common-denominator document that under-serves every room it enters.",
+            "swe": "Single source of truth for technical details. No more maintaining separate docs for different teams.",
+            "marketing": "One deck serves all audiences. No need to create multiple versions for different stakeholders.",
+            "executive": "Efficient knowledge sharing. One deck that adapts to different stakeholder needs saves preparation time.",
+            "designer": "Consistent experience. Users see explanations tailored to their role without switching documents."
+          },
           "sources": []
         }
       ]
@@ -61,7 +73,13 @@
             "height": 0.07111
           },
           "text": "Replace nightly batch ETL with event-driven CDC over Kafka",
-          "context": "Removes the up-to-24-hour staleness window that drives most 'why is my number wrong?' support tickets. Cost: an always-on streaming service to operate, versus a job that only ran at 2am.",
+          "contexts": {
+            "general": "Removes the up-to-24-hour staleness window that drives most 'why is my number wrong?' support tickets. Cost: an always-on streaming service to operate, versus a job that only ran at 2am.",
+            "swe": "CDC over Kafka provides real-time data streaming. Reduces latency from hours to seconds. Requires always-on infrastructure.",
+            "marketing": "Eliminates data staleness complaints from customers. Enables real-time product features that differentiate us from competitors.",
+            "executive": "Reduces support ticket volume related to stale data. Infrastructure cost trade-off: always-on vs batch.",
+            "designer": "User benefit: Near real-time data accuracy. Reduces confusion from outdated information."
+          },
           "sources": [
             "arch-decision-014.md"
           ]
@@ -76,7 +94,13 @@
             "height": 0.07111
           },
           "text": "Cut p99 ingest latency from 42 min to under 90 s",
-          "context": "The 90-second target is what makes in-product alerting viable — below the threshold where a user would rather check the source system directly. We measured 42 min at p99 over the last quarter.",
+          "contexts": {
+            "general": "The 90-second target is what makes in-product alerting viable — below the threshold where a user would rather check the source system directly. We measured 42 min at p99 over the last quarter.",
+            "swe": "p99 latency of 42 minutes is unacceptable for real-time systems. 90 second target achieved through optimized streaming architecture.",
+            "marketing": "Sub-90-second latency enables real-time user notifications and alerts. Improves user engagement and satisfaction.",
+            "executive": "42 minute to 90 second improvement. Enables new product capabilities previously blocked by latency constraints.",
+            "designer": "Performance improvement: Users experience near-instant updates. Reduces the need for manual refreshes."
+          },
           "sources": [
             "latency-audit-jun.pdf"
           ]
@@ -91,7 +115,13 @@
             "height": 0.07111
           },
           "text": "Backfill via idempotent replay; dual-write during cutover",
-          "context": "This is the de-risking step. Dual-write means we can abort the migration at any point and fall back to the old pipeline with no data loss — worth the extra two weeks of engineering time.",
+          "contexts": {
+            "general": "This is the de-risking step. Dual-write means we can abort the migration at any point and fall back to the old pipeline with no data loss — worth the extra two weeks of engineering time.",
+            "swe": "Idempotent replay ensures data consistency during backfill. Dual-write provides rollback capability. Two-week engineering investment for risk mitigation.",
+            "marketing": "Migration safety: Zero data loss guarantee. Allows confident communication of migration timeline to customers.",
+            "executive": "Risk mitigation strategy: Dual-write enables safe rollback. Two weeks of engineering time is justified by the risk reduction.",
+            "designer": "User protection: Data integrity maintained throughout migration. No disruption to end users."
+          },
           "sources": []
         },
         {
@@ -104,7 +134,13 @@
             "height": 0.07111
           },
           "text": "Retire the nightly cron and deprecate the legacy Airflow DAGs",
-          "context": "Removes roughly 9 engineer-hours a week of on-call toil. That capacity is already allocated to the Q4 alerting work, so the saving is real rather than notional.",
+          "contexts": {
+            "general": "Removes roughly 9 engineer-hours a week of on-call toil. That capacity is already allocated to the Q4 alerting work, so the saving is real rather than notional.",
+            "swe": "Eliminates legacy Airflow DAGs and cron jobs. Reduces operational complexity and maintenance burden by 9 engineer-hours weekly.",
+            "marketing": "Engineering capacity freed up for feature development. 9 hours/week reallocated to Q4 roadmap items.",
+            "executive": "Cost savings: 9 engineer-hours per week saved. Capacity reallocated to strategic Q4 initiatives.",
+            "designer": "Operational improvement: More reliable systems with reduced maintenance overhead."
+          },
           "sources": [
             "q3-roadmap.pdf p.7"
           ]
@@ -126,7 +162,13 @@
             "height": 0.09
           },
           "text": "42 min → 90 s",
-          "context": "Measured at p99 against the June baseline. The 90 s figure is the target, not yet the observed value — current staging runs sit at 110 s and are still improving.",
+          "contexts": {
+            "general": "Measured at p99 against the June baseline. The 90 s figure is the target, not yet the observed value — current staging runs sit at 110 s and are still improving.",
+            "swe": "p99 measurement: June baseline was 42 minutes. Target is 90 seconds. Current staging at 110s, optimization ongoing.",
+            "marketing": "Performance improvement: From 42 minutes to 90 seconds. Enables near real-time user experiences.",
+            "executive": "Key metric: p99 latency from 42 min to 90s. Target not yet met in staging (110s) but improving.",
+            "designer": "User impact: Dramatic performance improvement. 42 minutes to 90 seconds is a 28x speedup."
+          },
           "sources": [
             "latency-audit-jun.pdf"
           ]
@@ -141,7 +183,13 @@
             "height": 0.16222
           },
           "text": "9 eng-hrs / week",
-          "context": "Reclaimed on-call and manual-rerun toil, already committed to Q4 alerting. Worth stating as committed rather than available, or it will get spent twice.",
+          "contexts": {
+            "general": "Reclaimed on-call and manual-rerun toil, already committed to Q4 alerting. Worth stating as committed rather than available, or it will get spent twice.",
+            "swe": "On-call reduction: 9 engineer-hours per week saved. Currently allocated to Q4 alerting development.",
+            "marketing": "Resource allocation: 9 hours/week freed from operations. Already earmarked for Q4 roadmap.",
+            "executive": "Efficiency gain: 9 engineer-hours/week saved. Committed to Q4 strategic initiatives.",
+            "designer": "Capacity increase: More engineering time available for product improvements."
+          },
           "sources": [
             "q3-roadmap.pdf p.7"
           ]
@@ -156,7 +204,13 @@
             "height": 0.16222
           },
           "text": "3 roadmap items unblocked",
-          "context": "Live usage dashboards, in-product alerting, and usage-based billing. All three were gated on sub-minute data freshness; none can ship before this lands.",
+          "contexts": {
+            "general": "Live usage dashboards, in-product alerting, and usage-based billing. All three were gated on sub-minute data freshness; none can ship before this lands.",
+            "swe": "Unblocked: Live usage dashboards, in-product alerting, usage-based billing. All required sub-minute data freshness.",
+            "marketing": "Feature enablement: Three major features now possible with real-time data: live dashboards, alerting, usage-based billing.",
+            "executive": "Strategic unlock: Three roadmap items dependent on this migration. Live dashboards, alerting, usage-based billing.",
+            "designer": "Product expansion: Three new features enabled. Previously blocked by latency constraints."
+          },
           "sources": [
             "q3-roadmap.pdf p.2"
           ]
@@ -171,7 +225,13 @@
             "height": 0.11111
           },
           "text": "Risk: dual-write doubles warehouse cost for the two-week cutover window. Finance has approved the overage.",
-          "context": "The main open risk on the plan. Approved at ~£18k for the window. If cutover slips past two weeks the overage needs re-approval, which is the trigger to escalate.",
+          "contexts": {
+            "general": "The main open risk on the plan. Approved at ~£18k for the window. If cutover slips past two weeks the overage needs re-approval, which is the trigger to escalate.",
+            "swe": "Cost risk: Dual-write doubles warehouse costs during cutover. £18k approved for 2-week window. Extension requires re-approval.",
+            "marketing": "Budget consideration: Additional £18k approved for migration. Timeline risk if cutover extends beyond 2 weeks.",
+            "executive": "Financial risk: £18k overage approved for 2-week window. Escalation trigger if timeline slips.",
+            "designer": "Resource constraint: Temporary cost increase during migration. Managed within approved budget."
+          },
           "sources": [
             "finance-approval-q3.pdf"
           ]

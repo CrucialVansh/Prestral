@@ -73,12 +73,13 @@ def _retry_with_backoff(func, max_retries: int = 5, base_delay: float = 1.0):
 ANALYSIS_SYSTEM_PROMPT = """You are an assistant that relates slide components to a supporting document.
 The document is a deeper, more detailed version of the slide deck.
 
-Given a list of slide components (each with an id and text) and relevant document passages,
-return a JSON object mapping each component id to an object with:
-  - "context": a concise explanation (2–5 sentences) of what this component means,
-    grounded in the document passages (and any attached images for picture components).
-    If the document does not cover it, say so briefly.
-  - "sources": a list of source labels (from the provided passages) that support the context.
+Given a list of slide components (each with an id and text), relevant document passages,
+and a list of audience types, return a JSON object mapping each component id to an object with:
+  - "contexts": a dict mapping each audience type to a concise explanation (2–5 sentences) 
+    of what this component means for that audience, grounded in the document passages 
+    (and any attached images for picture components). If the document does not cover it, 
+    say so briefly. Adapt the explanation to each audience's needs.
+  - "sources": a list of source labels (from the provided passages) that support the contexts.
 
 Some picture components may include an image in this request. Describe what the image shows
 when relevant, and relate it to the document. Ignore native charts/decorative shapes — only
@@ -87,7 +88,7 @@ embedded pictures are provided as images.
 Only use the provided document passages and images. Do not invent facts.
 Respond with ONLY valid JSON of the form:
 {
-  "<component_id>": {"context": "...", "sources": ["..."]},
+  "<component_id>": {"contexts": {"general": "...", "swe": "...", ...}, "sources": ["..."]},
   ...
 }
 """
@@ -116,21 +117,9 @@ _AUDIENCE_GUIDANCE: dict[str, str] = {
         "Audience: an executive / decision-maker. Lead with the so-what, risks, and decisions. "
         "Be concise, prioritize outcomes and numbers, minimize implementation detail."
     ),
-    "sales": (
-        "Audience: a sales professional. Focus on customer value, objections, proof points, "
-        "and how to pitch this slide beat. Keep it actionable and buyer-facing."
-    ),
-    "student": (
-        "Audience: a student learning the topic. Explain step-by-step, define terms, "
-        "use simple analogies, and avoid assuming prior domain expertise."
-    ),
     "designer": (
         "Audience: a product/UX designer. Emphasize user impact, flows, clarity of the slide's "
         "message, and how information hierarchy or visuals support understanding."
-    ),
-    "finance": (
-        "Audience: a finance / analyst reader. Emphasize numbers, drivers, margins, assumptions, "
-        "and variance. Be precise with figures and call out what is / isn't supported by the doc."
     ),
 }
 
@@ -217,15 +206,19 @@ class LLMClient:
         slide: Slide,
         retrieved_chunks: list[DocChunk],
         images: dict[str, str] | None = None,
+        audiences: list[str] | None = None,
     ) -> dict[str, dict[str, Any]]:
         """
-        Call the LLM once per slide to produce per-component context.
+        Call the LLM once per slide to produce per-component context for each audience.
 
         ``images`` maps component_id -> data URI for embedded PPTX pictures only.
+        ``audience`` is a list of audience presets to generate contexts for.
         """
         if not slide.components:
             return {}
 
+        audiences = audiences or list(_AUDIENCE_GUIDANCE.keys())
+        
         images = images or {}
         components_payload = [
             {
@@ -246,6 +239,8 @@ class LLMClient:
                 "notes": slide.notes,
                 "components": components_payload,
                 "document_passages": passages_payload,
+                "audiences": audiences,
+                "audience_guidance": {a: _AUDIENCE_GUIDANCE.get(a, "") for a in audiences},
                 "image_note": (
                     "Following images are labeled by component_id in order. "
                     "Use them only for components with has_image=true."

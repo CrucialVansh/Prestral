@@ -53,20 +53,20 @@ class Component(BaseModel):
 
     Use ``id`` when opening a chat session or sending a scoped query.
     Use ``bbox`` to position the hotspot overlay.
-    Use ``context`` for instant hover text (no extra API call).
+    Use ``contexts`` for instant hover text per audience (no extra API call).
     """
 
     id: str = Field(..., description="Stable id, e.g. ``slide0-shape2``. Use for sessions/query.")
     type: ComponentType = Field(..., description="Detected shape type.")
     bbox: BBox = Field(..., description="Normalized position/size for overlays.")
     text: str = Field("", description="Extracted text from the shape (may be empty for images).")
-    context: str = Field(
-        "",
-        description="LLM explanation linking this shape to the supporting doc(s). Safe for hover UI.",
+    contexts: dict[str, str] = Field(
+        default_factory=dict,
+        description="LLM explanation per audience, mapping audience name to context. Safe for hover UI.",
     )
     sources: list[str] = Field(
         default_factory=list,
-        description="Document source labels that support ``context``.",
+        description="Document source labels that support the contexts.",
     )
     has_image: bool = Field(
         False,

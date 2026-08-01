@@ -31,10 +31,10 @@ def _apply_component_contexts(
         entry = analysis.get(comp.id)
         if not isinstance(entry, dict):
             continue
-        context = entry.get("context")
+        contexts = entry.get("contexts")
         sources = entry.get("sources")
-        if isinstance(context, str):
-            comp.context = context
+        if isinstance(contexts, dict):
+            comp.contexts = contexts
         if isinstance(sources, list):
             comp.sources = [str(s) for s in sources]
 
@@ -127,12 +127,16 @@ def analyze_deck_multi(
     if chunks:
         embeddings.embed_chunks(chunks)
 
+    # Get the list of audience presets from the LLM client
+    from app.services.llm import _AUDIENCE_GUIDANCE
+    audience_presets = list(_AUDIENCE_GUIDANCE.keys())
+    
     for slide in slides:
         slide_images = {
             c.id: images[c.id] for c in slide.components if c.id in images
         }
         retrieved = _retrieve_for_slide(slide, chunks, embeddings, settings.top_k)
-        analysis = llm.relate_slide_components(slide, retrieved, images=slide_images)
+        analysis = llm.relate_slide_components(slide, retrieved, images=slide_images, audiences=audience_presets)
         _apply_component_contexts(slide.components, analysis)
 
     return Deck(

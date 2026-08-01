@@ -30,8 +30,8 @@ def _build_anchor(deck: Deck, request: QueryRequest) -> str:
         if comp is None:
             raise HTTPException(status_code=404, detail=f"Component not found: {request.component_id}")
         parts.append(f"Component {comp.id} ({comp.type.value}): {comp.text}")
-        if comp.context:
-            parts.append(f"Previously linked context: {comp.context}")
+        if comp.contexts:
+            parts.append(f"Previously linked contexts: {comp.contexts}")
         if slide and slide.notes:
             parts.append(f"Slide notes: {slide.notes}")
         return "\n".join(parts)
@@ -44,8 +44,8 @@ def _build_anchor(deck: Deck, request: QueryRequest) -> str:
         parts.append(f"Slide {slide.index}")
         for comp in slide.components:
             line = f"- [{comp.id}] ({comp.type.value}): {comp.text}"
-            if comp.context:
-                line += f"\n  context: {comp.context}"
+            if comp.contexts:
+                line += f"\n  contexts: {comp.contexts}"
             parts.append(line)
         if slide.notes:
             parts.append(f"Notes: {slide.notes}")
